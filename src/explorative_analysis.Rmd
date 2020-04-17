@@ -1,0 +1,663 @@
+---
+title: "Inital data analysis for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
+author: "Mikko Arvasr"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+    df_print: paged
+
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+library(tidyverse)
+#library(epitools)
+#library(ez)
+library(lubridate)
+#library(ggbeeswarm)
+#library(tidymodels)
+#library(broom)
+#library(GGally)
+#library(ggfortify)
+#library(car)
+#library(boot)
+```
+
+# Executive summary
+
+This file includes the code for computing the regression results regarding the predictors of the evolution of self-related health during the FinDonor study for the 
+# Load the data
+
+We load the data and assign groups as they were assigned in the first part of the study. 
+
+```{r loading}
+#Load questionnaire data
+load(file = "../data/final_data.rdata") 
+final_data <- data
+
+#load measurement data
+load(file = "../data/quest_2_donor_data.rdata")
+
+FD_activity_biomarker_data <- data %>% 
+  rename(Ferritin_beginning = Ferritin)
+
+rm(data)
+```
+
+# Preprocessing
+
+
+
+We remove donors with very high ferritin (/Ferritin > 400) and high CRP (> 30)
+
+We compute for each donor their wight at first donation and then the difference in reported BMI between the first questionnaire and the last questionnaire. 
+
+We then build a categorical variable for smking status. This avraible will eed to be dummy coedd into 3 varaibles if it is used as a regression variable.
+
+* Never smoker: non smoker at both time-points
+* Always smoker: smoker at both time-points
+* New smoker: non-smoker at first but smoker at second
+* Former smoker: smoker at first but non-smoker at second.
+
+we will apply this coding as it was applied in a recent [epidemiological study](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6290273/) in the Japanese population. Importantly we will consider only changes from smoker to non-smoker, and not changes fron "daily" to "occasional" smoker, as was done in the previously cited paper(NOTE: they had much more precise quantification of smoking behavior (see [questionnaire](https://epi.ncc.go.jp/files/00_common/questionnaire/english/BL_Cohort_I_questionnaire_English.pdf) ) and a much larger N and still used a binary smoking/non-smoking catergorisation).
+
+We also add age to the dataframe.
+
+The data object FD_activity_biomarker_data includes all necessary variables for implenting  the model.
+
+```{r}
+
+
+
+FD_activity_biomarker_data <-
+  final_data %>% 
+    group_by(donor) %>%
+  # Get staring weight
+    filter(questionnaire =="First") %>% 
+    rename(starting_weight = weight) %>% 
+    dplyr::select(donor, starting_weight) %>% 
+    full_join(final_data, by = "donor") %>% 
+  # Get difference in BMI
+    dplyr::select(donor, starting_weight, BMI, questionnaire) %>% 
+    spread(key = questionnaire, value = BMI ) %>% 
+    mutate(BMI_diff = Second - First) %>% 
+    dplyr::select(-First, -Second) %>% 
+    full_join(final_data, by = "donor") %>% 
+  # GEt smoking status evolution
+    dplyr::select(donor, starting_weight, BMI_diff, smoking, questionnaire) %>% 
+    spread(key = questionnaire, value = smoking) %>% 
+    mutate(smoking_behavior = case_when(First == "no" & Second == "no" ~"never smoker",
+                                        First == "no" &  Second %in% c("daily", "sometimes") ~ "new smoker",
+                                        First %in% c("daily", "sometimes") & Second %in% c("daily", "sometimes") ~ "always smoker",
+                                        First %in% c("daily", "sometimes") & Second == "no" ~"Former smoker",
+                                        TRUE ~"NA")) %>% 
+    dplyr::select(-First, -Second) %>% 
+    full_join(final_data, by = "donor") %>%
+    dplyr::select(donor, starting_weight, BMI_diff, health, smoking_behavior, questionnaire) %>% 
+  # Get health status evolution
+     spread(key = questionnaire, value = health) %>% 
+     mutate(health_evolution = case_when(First < Second ~ "Improved",
+                                  First == Second ~ "Stable",
+                                  Second < First ~ "Worsened",
+                                  TRUE ~"NA")) %>% 
+    dplyr::select(-First, -Second) %>% 
+  # Add number of months between donation events  
+    full_join(final_data, by = "donor") %>%
+    dplyr::select(donor, starting_weight, BMI_diff, health_evolution, smoking_behavior, date, questionnaire,group) %>% 
+    spread(key = questionnaire, value = date) %>% 
+  mutate(interval_between_quest = interval(First, Second) %>% 
+                                    as.duration() %>% 
+           as.numeric( "months") %>% 
+           round(0)) %>% 
+    dplyr::select(-First, -Second) %>% 
+  # Add donor age
+ #    left_join(first_questionnaire_data %>% 
+  #              dplyr::select(donor, Age),
+  #            by = "donor") %>% 
+  # Add donro group
+  #  left_join(donor_group_df %>% 
+  #              dplyr::select(donor, group),
+   #           by = "donor") %>% 
+    left_join(FD_activity_biomarker_data, by = "donor") %>% 
+  #rename(age = Age) %>% 
+      filter( group != "Women_pre_menop_no_mens") %>% 
+  # Exckude donors with no measure of health evolution
+  filter(health_evolution != "NA") %>% 
+  drop_na(starting_weight,BMI_diff ) %>% 
+  filter(Ferritin_beginning <= 400 & CRP < 30)
+
+final_data <-
+  final_data %>% 
+    filter(donor %in% FD_activity_biomarker_data$donor)
+```
+
+
+We first count how many donors we have in each group. 
+
+```{r}
+final_data %>% 
+  filter(questionnaire == "First") %>% 
+   count(group)
+```
+
+CLEANED CODE UNTILL HERE TO WORK WITH NEW DATA
+
+# Regressions
+
+## REgression data
+
+We select the variabels that will be included in the models.
+
+We also run some trasnformations to make the OR more interpretable:
+
+* Ferritin is transformed to $$log(Ferritin)/log(2)$$ so that a unit increase in the transformed variable corresponds to a doubking of ferritin
+* weight, age and Hb were divided by 5 so that a unit increase in the transformed varaible corresponds to an increase in 5 kg or 5 years or 5 Hb points. 
+
+```{r}
+regression_data <-
+  FD_activity_biomarker_data %>% 
+  inner_join(first_questionnaire_data %>% 
+               dplyr::select(donor, QR17),
+             by = "donor") %>% 
+  mutate(health_very_good = ifelse(QR17 == "Very_good",1,0),
+         health_excellent = ifelse(QR17 == "Excellent", 1, 0)) %>% 
+  mutate(health_outcome = ifelse(health_evolution == "Worsened", 1,0)) %>% 
+  mutate(donation_frequency = nb_donations_between_questionnaires/(interval_between_quest/12) ) %>% 
+  mutate(log_Ferritin_beginning = log(Ferritin_beginning)/log(2),
+         starting_weight = starting_weight/5,
+         age = age/5,
+         Hb_beginning = Hb_v/5) %>% 
+  dplyr::select(donor, starting_weight,BMI_diff, age, group, log_Ferritin_beginning, Hb_beginning,
+                donation_frequency, health_very_good,health_excellent,health_outcome  ) 
+  
+  
+```
+
+
+## Pre-menopausal women 
+
+```{r}
+regression_data_pre_menop_women <-
+  regression_data %>% 
+  filter(group == "Pre_menopause_women") %>% 
+  dplyr::select(donor, age, starting_weight, BMI_diff,
+                log_Ferritin_beginning, Hb_beginning, donation_frequency) %>% 
+  gather(key = key, value = value, -donor) %>% 
+  group_by(key) %>% 
+  mutate(value_scale = scale(value, scale = FALSE)[,1]) %>% 
+  dplyr::select(-value) %>% 
+  spread(key = key, value = value_scale) %>% 
+  inner_join(regression_data %>% 
+               dplyr::select(donor, health_very_good, health_excellent, health_outcome),
+             by = "donor")
+
+```
+
+### Correlograms
+
+```{r echo=FALSE}
+
+ggpairs(regression_data_pre_menop_women, 
+        columns = c("health_outcome", "age", "starting_weight",  "BMI_diff","Hb_beginning", "log_Ferritin_beginning",  "donation_frequency"),
+         lower = list(continuous = wrap("points", alpha = 0.3,size=0.1),
+                      combo = wrap("facethist", binwidth = 0.5)),
+        progress = FALSE)
+```
+
+```{r}
+logit_pre_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
+                               log_Ferritin_beginning + Hb_beginning +
+                              donation_frequency + health_very_good + health_excellent,
+                             data=regression_data_pre_menop_women,
+                            family="binomial")
+ 
+ summary(logit_pre_menop_women)
+```
+
+```{r}
+plot(logit_pre_menop_women)
+```
+
+```{r}
+vif(logit_pre_menop_women)
+```
+
+```{r}
+tidy_logit_pre_menop_women <-
+  logit_pre_menop_women %>% 
+  tidy %>% 
+  mutate(OR = exp(estimate),
+         group = "Pre_menopause_women")
+```
+
+## Post-menopausal women 
+
+```{r}
+regression_data_post_menop_women <-
+  regression_data %>% 
+  filter(group == "Post_menopause_women") %>% 
+  dplyr::select(donor, age, starting_weight, BMI_diff,
+                log_Ferritin_beginning,Hb_beginning,donation_frequency) %>% 
+  gather(key = key, value = value, -donor) %>% 
+  group_by(key) %>% 
+  mutate(value_scale = scale(value, scale = FALSE)[,1]) %>% 
+  dplyr::select(-value) %>% 
+  spread(key = key, value = value_scale) %>% 
+  inner_join(regression_data %>% 
+               dplyr::select(donor, health_very_good, health_excellent, health_outcome),
+             by = "donor")
+
+```
+
+### Correlograms
+
+```{r echo=FALSE}
+
+ggpairs(regression_data_post_menop_women, 
+        columns = c("health_outcome", "age", "starting_weight",  "BMI_diff","Hb_beginning", "log_Ferritin_beginning",  "donation_frequency"),
+         lower = list(continuous = wrap("points", alpha = 0.3,size=0.1),
+                      combo = wrap("facethist", binwidth = 0.5)),
+        progress = FALSE)
+```
+
+
+### Models and results
+
+```{r}
+logit_post_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
+                                log_Ferritin_beginning + Hb_beginning + donation_frequency +
+             health_very_good + health_excellent,
+             data=regression_data_post_menop_women,
+             family="binomial")
+ 
+ summary(logit_post_menop_women)
+```
+
+
+```{r}
+tidy_logit_post_menop_women <-
+  logit_post_menop_women %>% 
+  tidy %>% 
+  mutate(OR = exp(estimate),
+         group = "Post_menopause_women")
+```
+
+### Diagnostics
+
+We check that there is no problematic collinearity betwen regressors (VIF < 5)
+
+```{r}
+vif(logit_post_menop_women)
+```
+
+```{r}
+plot(logit_post_menop_women)
+```
+
+
+
+
+## Men
+
+```{r}
+regression_data_men <-
+  regression_data %>% 
+  filter(group == "Men") %>% 
+  dplyr::select(donor, age, starting_weight, BMI_diff,
+                log_Ferritin_beginning, Hb_beginning, 
+                donation_frequency) %>% 
+  gather(key = key, value = value, -donor) %>% 
+  group_by(key) %>% 
+  mutate(value_scale = scale(value, scale = FALSE)[,1]) %>% 
+  dplyr::select(-value) %>% 
+  spread(key = key, value = value_scale) %>% 
+  inner_join(regression_data %>% 
+               dplyr::select(donor, health_outcome, health_very_good, health_excellent),
+             by = "donor")
+```
+
+
+### Correlograms
+
+```{r echo=FALSE}
+
+ggpairs(regression_data_men, 
+        columns = c("health_outcome", "age", "starting_weight",  "BMI_diff", "log_Ferritin_beginning", "Hb_beginning", "donation_frequency"),
+         lower = list(continuous = wrap("points", alpha = 0.3,size=0.1),
+                      combo = wrap("facethist", binwidth = 0.5)),
+        progress = FALSE)
+```
+
+### Models and results
+
+```{r}
+logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
+                   log_Ferritin_beginning + Hb_beginning + donation_frequency +
+             health_very_good + health_excellent,
+             data=regression_data_men,
+             family="binomial")
+ 
+ summary(logit_men)
+```
+
+```{r}
+library(epiDisplay)
+logistic.display(logit_men)
+```
+
+```{r}
+tidy_logit_men <-
+  logit_men %>% 
+  tidy %>% 
+  mutate(OR = exp(estimate),
+         group = "Men")
+```
+
+### Diagnostics
+```{r}
+plot(logit_men)
+```
+
+
+
+```{r}
+vif(logit_men)
+```
+
+# Bootstraps
+```{r}
+
+# https://www.painblogr.org/2017-10-18-purrring-through-bootstraps.html
+
+
+get_coefficients <- function(data, boot_ind){
+  fit <- glm (health_outcome~.,
+              data[boot_ind,],
+              family = "binomial")
+  return(coef(fit))
+}
+
+
+
+compute_Bca_CI <-function(fit_boot){
+  Bca_inf = rep(0, length(fit_boot$t0))
+  Bca_sup = rep(0, length(fit_boot$t0))
+  for (i_regressor in 1:length(fit_boot$t0)){
+    CI <- boot.ci(fit_boot, type = "bca", index=i_regressor)
+    Bca_inf[i_regressor] <- CI$bca[4]
+    Bca_sup[i_regressor] <- CI$bca[5]
+  }
+  return(tibble(Bca_inf,Bca_sup, regressor = names(fit_boot$t0)) %>% 
+           filter(regressor != "(Intercept)"))
+}
+
+
+get_bootstrap <- function(data, nb_boot){
+ 
+ 
+
+    fit_boot <- boot(data, statistic= get_coefficients, R = nb_boot)
+
+
+  fit_boot_distrib <- as.tibble(fit_boot$t)  
+  names(fit_boot_distrib) <- names(fit_boot$t0)
+
+  fit_boot_Bca <- compute_Bca_CI(fit_boot)
+  
+  return(list(fit_boot_distrib,fit_boot_Bca))
+}
+
+
+
+
+get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
+{
+
+  ## preprocess and standardize data
+
+  
+    test_data_std <- regression_data %>% 
+      filter(group == current_group) %>% 
+      dplyr::select(donor, age, starting_weight, BMI_diff,
+                    log_Ferritin_beginning, Hb_beginning, 
+                    donation_frequency) %>% 
+      gather(key = key, value = value, -donor) %>% 
+      group_by(key) %>% 
+      mutate(value_scale = scale(value, scale = FALSE)[,1]) %>% 
+      dplyr::select(-value) %>% 
+      spread(key = key, value = value_scale) %>% 
+      inner_join(regression_data %>% 
+                   dplyr::select(donor, health_outcome, health_very_good, health_excellent),
+                 by = "donor") %>% 
+    dplyr::select(-donor) 
+
+  
+  
+  result <- test_data_std %>% 
+  get_bootstrap(nb_boot = nb_boot)
+
+
+  bootstrap_distrib <- result[[1]] %>% 
+    gather(key = regressor, value = coefficient) %>% 
+    filter(regressor != "(Intercept)") %>% 
+    mutate(group = current_group)
+    
+  Bca_CI  <- result[[2]] %>% mutate(group = current_group)
+
+  return(list(bootstrap_distrib,Bca_CI))
+}
+
+
+output_file_distrib = ("../results/bootstraps/coeff_boot_distrib_seed_125_ctr_strata_final.rdata")
+output_file_Bca = ("../results/bootstraps/coeff_boot_Bca_seed_125_ctr_strata_final.rdata")
+
+
+get_from_file_ferr = TRUE
+
+set.seed(125)
+group_str = "Pre_menopause_women"
+
+if (get_from_file_ferr){
+  load(file=output_file_distrib)
+  load(file=output_file_Bca)
+}else
+{
+   for(group_str in c("Pre_menopause_women", "Post_menopause_women","Men")){
+    
+    stuff <- get_bootstrap_coeffs(regression_data, group_str, nb_boot = 10000)
+    
+    if(!exists("bootstrap_distrib")){
+      bootstrap_distrib <- stuff[[1]]
+      bootstrap_Bca_CI <- stuff[[2]]
+    }else
+    {
+      bootstrap_distrib<-bind_rows(bootstrap_distrib, stuff[[1]])
+      bootstrap_Bca_CI<-bind_rows(bootstrap_Bca_CI, stuff[[2]])
+    }
+  } 
+  save(bootstrap_distrib,file=output_file_distrib) 
+  save(bootstrap_Bca_CI,file=output_file_Bca)
+}
+
+
+
+
+```
+
+# Forest plots
+
+```{r}
+# "\U0394 BMI"
+
+regressor_values <- c(
+ "age" = "Age",
+   "BMI_diff" = "BMI difference",
+   "donation_frequency" = "Donation frequency",
+   "Hb_beginning" = "Initial Hemoglobin",
+   "log_Ferritin_beginning" ="Initial Ferritin",
+   "starting_weight" ="Initial weight",
+   "health_very_good" ="Initial health rating \n Very good vs Satisfactory/Good",
+    "health_excellent" = "Initial health rating \n Excellent vs Satisfactory/Good"
+)
+```
+
+```{r}
+bootstrap_Bca_CI <-
+  tidy_logit_men %>% 
+  bind_rows(tidy_logit_post_menop_women) %>% 
+  bind_rows(tidy_logit_pre_menop_women) %>% 
+  dplyr::select(group, term, OR, p.value) %>% 
+  rename(regressor = term) %>% 
+  full_join(bootstrap_Bca_CI,
+            by =  c("regressor", "group")) %>% 
+  filter(regressor != "(Intercept)") %>% 
+  mutate(Bca_inf = exp(Bca_inf),
+         Bca_sup = exp(Bca_sup),
+         is_sig = p.value < 0.05) %>% 
+  mutate(regressor = plyr::revalue(regressor, regressor_values),
+    regressor = ordered(regressor,
+                    levels =  c("Age", "Initial weight", "BMI difference",  "Initial Hemoglobin", 
+                                "Initial Ferritin","Donation frequency",
+                               "Initial health rating \n Very good vs Satisfactory/Good",
+                               "Initial health rating \n Excellent vs Satisfactory/Good")),
+    regressor = fct_rev(regressor),
+    group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal women",
+      group == "Post_menopause_women" ~ "Post-menopausal women",
+      TRUE ~ "Men"),
+    group = ordered(group, levels = c(  "Pre-menopausal women",  "Post-menopausal women", "Men"  ) ))
+
+
+```
+
+```{r}
+
+# "\U0394 BMI"
+bootstrap_distrib %>% 
+  mutate(regressor = plyr::revalue(regressor, regressor_values),
+  regressor = ordered(regressor,
+                  levels =  c("Age", "Initial weight", "BMI difference",  "Initial Hemoglobin", 
+                              "Initial Ferritin","Donation frequency",
+                              "Initial health rating \n Very good vs Satisfactory/Good",
+                              "Initial health rating \n Excellent vs Satisfactory/Good")),
+  regressor = fct_rev(regressor),
+  group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal women",
+    group == "Post_menopause_women" ~ "Post-menopausal women",
+    TRUE ~ "Men"),
+  group = ordered(group, levels = c( "Men",  "Post-menopausal women", "Pre-menopausal women" ) )) %>% 
+  mutate(OR = exp(coefficient)) %>% 
+  ggplot(aes(x = regressor, y = OR, color = group, fill = group)) +
+  geom_hline(yintercept = 1 , color = "grey", linetype = "dotted",
+             size = 1) +
+  # geom_violin(alpha = 0.15, trim = TRUE, position = position_dodge(width = 0.8), size = 0.1) +
+  geom_pointrange(data = bootstrap_Bca_CI, 
+                  aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
+                  position = position_dodge(width = 0.7), size = 1) +
+  # geom_point(data = bootstrap_Bca_CI, 
+  #            aes(shape = is_sig, fill = group),
+  #            position = position_dodge(width = 0.8), size = 2) +
+    scale_color_manual(values = c(  "#0065BD", "#BA0303", "#C50084" ),
+                     limits = c("Men",  "Post-menopausal women","Pre-menopausal women" )) +
+     scale_fill_manual(values = c(  "#0065BD", "#BA0303", "#C50084" ),
+                     limits = c("Men",  "Post-menopausal women","Pre-menopausal women" )) +
+ scale_shape_manual(values = c(1,16)) +
+  scale_y_log10(limits=c(1/40,40)) +
+  # scale_x_discrete(labels=parse(text=unique(bootstrap_Bca_CI$regressor)))
+  # ylim(1/35, 35) +
+  guides(shape = FALSE) +
+  theme_classic() +
+  # theme(legend.position = c(0.8,0.9),
+  #       legend.title = element_blank(),
+  #       legend.box = "vertical",
+  #       legend.text = element_text(size = 20),
+  #       plot.title =  element_text(size = 24,
+  #                                 hjust = 0),
+  #       panel.grid.minor.y = element_blank(),
+  #       axis.line = element_line(colour="black"),
+  #       axis.title.y = element_blank(),
+  #       axis.title.x = element_text(size = 24),
+  #       axis.text = element_text(size = 22),
+  #       panel.grid.major.y = element_blank()) +
+  coord_flip() +
+  xlab("Robust standardized coefficient") +
+  labs(title = "PREDICTORS OF WORSENED SELF-RATED HEALTH \nBETWEEN QUESTIONNAIRES",
+       subtitle = "") +
+
+
+   theme(axis.title = element_text(size = 14),
+        strip.text =  element_text(size = 14),
+        legend.text = element_text(size = 12),
+        strip.background = element_rect(fill = "white"),
+        strip.background.x = element_blank(),
+        axis.text.y = element_text(size = 14),
+        axis.text.x = element_text(size = 14, angle = 30,hjust = 0.8),
+        plot.title =  element_text(size = 16),
+        plot.subtitle = element_text(size = 16,
+                                     hjust = 0.5))
+   #
+ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.png",
+       width = 35,
+       height = 18,
+       dpi = "print",
+       units = "cm")
+
+```
+
+
+
+
+```{r eval=FALSE, include=FALSE}
+final_data %>% 
+  filter(questionnaire == "First") %>% 
+  dplyr::select(donor, QR17,group) %>% 
+  inner_join(FD_activity_biomarker_data,
+             by = c("donor", "group")) %>% 
+  # count(group, QR17, health_evolution) %>% 
+  # group_by(group, QR17) %>% 
+  # mutate(proportion = n / sum(n)) %>% 
+  # ungroup() %>% 
+  mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
+                           group == "Post_menopause_women" ~ "Post-menopausal \n women",
+                          TRUE ~ "Men"),
+        group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
+  mutate(QR17 = ifelse(QR17 == "Very_good" , "Very good", as.character(QR17)),
+        QR17 = ordered(QR17, levels = c(  "Satisfactory", "Good", "Very good", "Excellent") )) %>% 
+    mutate(health_evolution = plyr::revalue(health_evolution, health_evolution_values),
+           health_evolution = ordered(health_evolution, levels = c("Worse", "Same", "Better"))) %>% 
+  ggplot(aes(x  = health_evolution,
+             y = Hb_v,
+             color = group)) +
+   geom_quasirandom(alpha = 0.25) +
+  # geom_text(data = counted_data,
+  #           aes(label = paste("N =", n, sep = " "))) +
+    scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
+                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
+  # scale_y_log10() +
+  facet_grid(group ~ QR17) +
+  theme_bw() +
+  guides(color =  FALSE) +
+  xlab(" Evolution of health rating between questionnaires") +
+  ylab("Hemoglobin") +
+   labs(title= "Health evolution distributions",
+       subtitle = ("First questionnaire answer")) +
+  theme(axis.title = element_text(size = 12),
+        strip.text =  element_text(size = 12),
+        strip.background = element_rect(fill = "white"),
+        strip.background.x = element_blank(),
+        legend.text = element_text(size = 20), 
+        plot.title = element_text(size = 20),
+        plot.subtitle = element_text(size = 14,
+                                     hjust = 0.5))
+  
+# ggsave(filename = "../results/figures/time_between_questionnaires_distribution.png",
+#        height = 12,
+#        width = 16,
+#        dpi = "print",
+#        units = "cm")
+  
+```
+
