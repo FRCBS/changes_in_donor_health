@@ -16,6 +16,7 @@ knitr::opts_chunk$set(
 	warning = FALSE
 )
 library(tidyverse)
+library(corrplot)
 #library(epitools)
 #library(ez)
 library(lubridate)
@@ -51,15 +52,16 @@ load(file = "../data/final_data.rdata")
 # we know from our previous work are too messy: iron_supp_detailed
 # were only asked in second questionaire: life_qual, education, employment
 # are conveniency variables: AgeGroup, SixMonthsFromStartCount_FB, TwoYearsFromStartCount_FB
-temp <- data %>% select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB)
+# is ID: donor
+temp <- data %>% select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB,-donor)
 temp <- na.omit(temp)
 temp %>% group_by(questionnaire) %>% count()
 ```
 
-As we will loose most of our data if we study only complete data we have try to make decisions on which questions to exclude prior to analyses.
+As we will loose third of our data if we study only complete data we have try to make decisions on which questions to exclude prior to analyses.
 
 ```{r}
-temp <- data %>% select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB)
+temp <- data %>% select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB,-donor)
 temp <- temp %>% group_by(questionnaire) %>%  summarise_all(funs(sum(is.na(.))))
 temp <- as_tibble(t(temp), rownames = "Variable") %>% filter(Variable != "questionnaire")
 colnames(temp)[2] <- "First"
@@ -70,9 +72,117 @@ ggplot(temp) + geom_col(aes(x=Variable,y=NAs,fill=questionnaire),pos="dodge") + 
 
 ```
 
-I NEED TO GO BACK TO PRE_Ida AND CHECK IRON_SUP AND ANEMIA HISTORY, THEY MUST BE CODED WRONG!
 
 # Correlations between variables
 
+```{r , warning=FALSE}
+
+temp <- data %>% select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB, -donor,-questionnaire,-sex,-group)
+temp$date <- as.numeric(temp$date)
+
+#Change the numeric to factors to enable similar correlation calculation for all
+temp <- temp %>% mutate_if(is.numeric, ~cut(.,5))
+
+#https://datascience.stackexchange.com/questions/893/how-to-get-correlation-between-two-categorical-variable-and-a-categorical-variab
+cormat <- matrix(NA,ncol = ncol(temp),nrow=ncol(temp))
+rownames(cormat) <-colnames(temp)
+colnames(cormat) <-colnames(temp)
+for (i in rownames(cormat)) {
+  for (j in colnames(cormat)) {
+    d <- table(as.factor(temp[[i]]),as.factor(temp[[j]]))
+#    print(d)
+    #drop any all zero rows
+    d <- d[apply(X=d,MARGIN = 1,FUN = function(x){!all(x == 0 )}),]
+    d <- d[,apply(X=d,MARGIN = 2,FUN = function(x){!all(x == 0 )})]
+    #print(d)
+    t <- chisq.test(d,correct = F)
+    cramersV <- sqrt(t$statistic / sum(d))
+    if (cramersV > 1) {
+      #sometimes it fails in perfect correlation
+      cramersV <- 1
+    }
+    cormat[i,j] <- cramersV
+  }
+}
 
 
+```
+
+Visualise correlation disribution
+```{r}
+temp <- data.frame(correlation=cormat[lower.tri(cormat)])
+ggplot(temp) +  geom_histogram(aes(x=correlation),binwidth = 0.1)
+
+#and create a fake significance matrix of arbitary correlation of 0.5
+p.mat <- matrix(1, nrow=nrow(cormat),ncol=ncol(cormat))
+p.mat[as.vector(cormat > 0.5)] <- 0.01 
+diag(p.mat) <- 1
+
+```
+
+
+```{r}
+corrplot(cormat,type="lower",order="hclust",p.mat=p.mat,sig.level = 0.05,insig = "label_sig",pch.col = 'red',pch.cex = 1)
+```
+
+Extract those with correlation above 0.5.
+```{r}
+#take anything with at least 0.5 correlation
+any_above <- function(x){any(x > 0.5) }
+temp <-cormat
+#empty the diagonal
+diag(temp) <- 0
+#filter fake significance matrix
+p.mat <- p.mat[apply(temp,1, any_above),apply(temp,2, any_above)]
+#filter correlation matrix
+temp <- temp[apply(temp,1, any_above),apply(temp,2, any_above)]
+p.mat <- p.mat[apply(temp,1, any_above),apply(temp,2, any_above)]
+corrplot(temp,type="lower",order="hclust",p.mat=p.mat,sig.level = 0.05,insig = "label_sig",pch.col = 'red',pch.cex = 1)
+```
+
+# act_light vs act_heavy
+```{r}
+ggplot(data) + geom_bar(aes(x=act_light))
+```
+
+```{r}
+ggplot(data) + geom_bar(aes(x=act_heavy))
+```
+
+Keep "act_heavy"
+
+#health vs phys_cond
+
+```{r}
+ggplot(data) + geom_bar(aes(x=health))
+```
+```{r}
+ggplot(data) + geom_bar(aes(x=phys_cond))
+```
+
+phys_cond looks better. "health" is better validated, but itwill be used in the hypothesis testing part, so it can dropped from here 
+health_c can be just dropped.
+
+#vita_c vs vita_multi
+
+```{r}
+ggplot(data) + geom_bar(aes(x=vita_C))
+```
+
+```{r}
+ggplot(data) + geom_bar(aes(x=vita_multi))
+```
+
+vita_multi looks better so vita_C can be dropped.
+
+#sleep_night vs sleep_24h
+```{r , warning=FALSE}
+ggplot(data) + geom_histogram(aes(x=sleep_night),binwidth = 1)
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_histogram(aes(x=sleep_24h),binwidth = 1)
+```
+
+PERKULE TOULLA ON VIELÄ PARI JOTKA PITÄÄ KORJATA!
+
+Drop: act_light, health, health_c, vita_C
