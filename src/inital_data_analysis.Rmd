@@ -3,13 +3,11 @@ title: "Inital data analysis for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING T
 author: "Mikko Arvasr"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
-    df_print: paged
-
 ---
 
 
-
 ```{r setup, include=FALSE}
+# echo "rmarkdown::render('inital_data_analysis.Rmd', clean=TRUE,output_format='html_document',output_file='../results/inital_data_analysis.html')" | R --slave
 knitr::opts_chunk$set(
 	echo = TRUE,
 	message = FALSE,
@@ -58,7 +56,7 @@ temp <- na.omit(temp)
 temp %>% group_by(questionnaire) %>% count()
 ```
 
-As we will loose third of our data if we study only complete data we have try to make decisions on which questions to exclude prior to analyses.
+As we will loose one third of our data if we study only complete data we have try to make decisions on which questions to exclude prior to analyses or which data to impute.
 
 ```{r}
 temp <- data %>% select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB,-donor)
@@ -66,12 +64,22 @@ temp <- temp %>% group_by(questionnaire) %>%  summarise_all(funs(sum(is.na(.))))
 temp <- as_tibble(t(temp), rownames = "Variable") %>% filter(Variable != "questionnaire")
 colnames(temp)[2] <- "First"
 colnames(temp)[3] <- "Second"
-temp <- temp %>%  gather(key="questionnaire",value="NAs",-Variable) %>% mutate(NAs = as.numeric(gsub(" ","",NAs)))
+temp <- temp %>%  gather(key="questionnaire",value="NAs",-Variable) %>% mutate(NAs = as.numeric(gsub(" ","",NAs))) %>% filter(NAs != 0)
 
 ggplot(temp) + geom_col(aes(x=Variable,y=NAs,fill=questionnaire),pos="dodge") +  coord_flip() 
 
 ```
 
+
+
+```{r}
+temp <- temp %>% arrange(NAs) %>% tail(6)
+
+ggplot(temp) + geom_col(aes(x=Variable,y=NAs,fill=questionnaire),pos="dodge") +  coord_flip() 
+
+```
+
+People cannot remember if they have taken vitamine supplements containing iron or vitamine C and they cannot judge if their level of accomplishments has changed. Let's first see if some of these will drop out because they correlate heavily with some other explenatory variable.
 
 # Correlations between variables
 
@@ -140,7 +148,7 @@ p.mat <- p.mat[apply(temp,1, any_above),apply(temp,2, any_above)]
 corrplot(temp,type="lower",order="hclust",p.mat=p.mat,sig.level = 0.05,insig = "label_sig",pch.col = 'red',pch.cex = 1)
 ```
 
-# act_light vs act_heavy
+# act_light, act_heavy, act_none
 ```{r}
 ggplot(data) + geom_bar(aes(x=act_light))
 ```
@@ -149,7 +157,13 @@ ggplot(data) + geom_bar(aes(x=act_light))
 ggplot(data) + geom_bar(aes(x=act_heavy))
 ```
 
-Keep "act_heavy"
+```{r}
+table(is.na(data$act_heavy))
+table(is.na(data$act_light))
+```
+act_heavy looses more data, but has much more spread pontentially contaning more information.
+
+Keep "act_heavy". 
 
 #health vs phys_cond
 
@@ -160,7 +174,14 @@ ggplot(data) + geom_bar(aes(x=health))
 ggplot(data) + geom_bar(aes(x=phys_cond))
 ```
 
-phys_cond looks better. "health" is better validated, but itwill be used in the hypothesis testing part, so it can dropped from here 
+
+```{r}
+table(is.na(data$health))
+table(is.na(data$phys_cond))
+```
+
+
+phys_cond looks better and looses less data. "health" is better validated, but it will be used in the hypothesis testing part, so it can dropped from here 
 health_c can be just dropped.
 
 #vita_c vs vita_multi
@@ -173,7 +194,13 @@ ggplot(data) + geom_bar(aes(x=vita_C))
 ggplot(data) + geom_bar(aes(x=vita_multi))
 ```
 
-vita_multi looks better so vita_C can be dropped.
+```{r}
+table(is.na(data$vita_C))
+table(is.na(data$vita_multi))
+```
+
+
+vita_multi looses much less data and looks better so vita_C can be dropped.
 
 #sleep_night vs sleep_24h
 ```{r , warning=FALSE}
@@ -183,6 +210,167 @@ ggplot(data) + geom_histogram(aes(x=sleep_night),binwidth = 1)
 ggplot(data) + geom_histogram(aes(x=sleep_24h),binwidth = 1)
 ```
 
-PERKULE TOULLA ON VIELÄ PARI JOTKA PITÄÄ KORJATA!
+```{r}
+table(is.na(data$sleep_night))
+table(is.na(data$sleep_24h))
+```
 
-Drop: act_light, health, health_c, vita_C
+Distributions look quite similar, but sleep_looses less data. 
+
+#freq_fruits vs freq_vege
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_fruits))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_vege))
+```
+
+```{r}
+table(is.na(data$freq_fruits))
+table(is.na(data$freq_vege))
+```
+
+freq_fruits look better and looses less data.
+
+#freq_sports vs phys_cond
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_sports))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=phys_cond))
+```
+
+```{r}
+table(is.na(data$freq_sports))
+table(is.na(data$phys_cond))
+```
+
+Hard to say anything about the distributions, but physical condition looses less data.
+
+#freq_spirits, freq_beer, freq_wine
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_spirits))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_beer))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_wine))
+```
+```{r}
+table(is.na(data$freq_spirits))
+table(is.na(data$freq_beer))
+table(is.na(data$freq_wine))
+```
+Hard to say, but freq_beer looses least data.
+
+#freq_cutlets, freq_meat, diet, freq_meat, freq_fish, freq_eggs
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_cutlets))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_red_meat))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=diet))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_fish))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_eggs))
+```
+
+```{r}
+table(is.na(data$freq_cutlets))
+table(is.na(data$freq_red_meat))
+table(is.na(data$diet))
+table(is.na(data$freq_fish))
+table(is.na(data$freq_eggs))
+```
+
+As already seen in the enrollment data paper freq_red_meats distribution looks best also it looses leas data.
+
+
+#BMI, height and weigth
+```{r , warning=FALSE}
+ggplot(data) + geom_histogram(aes(x=BMI),binwidth = 1)
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_histogram(aes(x=height),binwidth = 5)
+```
+
+```{r , warning=FALSE}
+ggplot(data) + geom_histogram(aes(x=weight),binwidth = 5)
+```
+
+```{r}
+table(is.na(data$BMI))
+table(is.na(data$height))
+table(is.na(data$weight))
+```
+
+Keep BMI as composite of both.
+
+#freq_energy, freq_sad, health_soc, freq_calm, accomplish
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_energy))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_sad))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=health_soc))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=freq_calm))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=accomplish))
+```
+
+```{r}
+table(is.na(data$freq_energy))
+table(is.na(data$freq_sad))
+table(is.na(data$health_soc))
+table(is.na(data$freq_calm))
+table(is.na(data$accomplish))
+```
+
+accomplish looses a lot of data it can dropped just for that.
+freq_energy correlates with phys_cond and can be dropped for that.
+health_soc has a very skewed distiribution.
+freq_calm looses least data and has maybe the best looking distribution.
+
+#h_act_light vs h_act_noen
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=h_act_light))
+```
+```{r , warning=FALSE}
+ggplot(data) + geom_bar(aes(x=h_act_none))
+```
+
+```{r}
+table(is.na(data$h_act_light))
+table(is.na(data$h_act_none))
+```
+
+h_act_light looses less data.
+
+#Questions to drop
+Based on the above we have decided to drop: act_light, health, health_c, vita_C, sleep_24h, freq_vege, freq_sports, freq_spirits, freq_wine, freq_cutlets, diet, freq_fish, freq_eggs, weight, height, accomplish, freq_energy, health_soc, freq_sad, h_act_none
+
+```{r}
+temp <- data %>% select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB,-donor, -act_light, -health, -health_c, -vita_C, -sleep_24h, -freq_vege, -freq_sports, -freq_spirits, -freq_wine, -freq_cutlets, -diet, -freq_fish, -freq_eggs, -weight, -height, -accomplish, -freq_energy, -health_soc, -freq_sad,-h_act_none)
+temp <- na.omit(temp)
+temp %>% group_by(questionnaire) %>% count()
+```
+
+How will the sex/menopause groups look
+```{r}
+temp %>% group_by(questionnaire,group) %>% filter(group != 'Women_pre_menop_no_mens') %>%  count()
+```
+
+By excluding several questions that correlate with other questions and have distributions that are skewed (accomplish, diet) or are uniformative or are not clearly ordedred factors (like diet) we get complete data for over 100 more persons.
+
+

@@ -3,8 +3,6 @@ title: "Inital data analysis for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING T
 author: "Mikko Arvasr"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
-    df_print: paged
-
 ---
 
 
