@@ -1,6 +1,6 @@
 ---
 title: "Inital data analysis for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
-author: "Mikko Arvasr"
+author: "Mikko Arvas"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
 ---
@@ -30,9 +30,7 @@ library(lubridate)
 # Executive summary
 
 
-In this file we carry out inital data analysis to look at explenatory variables in the questionaire data. blaablaablaa
-
-1. Look for correlation between variables.
+In this file we carry out inital data analysis to decide which explenatory variables to exclude based on correlations between the explenatory variables and counts is missing data.
 
 # Load the data
 
@@ -42,7 +40,50 @@ We load the data and assign groups as they were assigned in the first part of th
 #Load questionnaire data
 load(file = "../data/final_data.rdata") 
 
+data %>% group_by(questionnaire) %>% count()
+
 ```
+
+```{r}
+data %>% group_by(questionnaire,group) %>% filter(group != 'Women_pre_menop_no_mens') %>%  count()
+```
+
+
+#Remove end point variable
+
+In the inital data analysis stage we do not want to look at our primary endpoint: "self-rated health" i.e. "health" to avoid fishing for correlations.
+```{r}
+
+data <- data %>% filter(!is.na(health))  %>% select(-health)
+data %>% group_by(questionnaire) %>% count()
+```
+
+
+#Recodings
+Questions with 3 possible answers : "no", "yes", "don't know", are recoded as an ordered factor with 3 levels: "yes"< "don't know" <  "no".  
+```{r}
+#Have you felt that you were able to accomplish less than you would have liked to?
+temp <- as.character(data$accomplish)
+temp[is.na(temp)] <- "don't know"
+data$accomplish = ordered(temp,
+                levels =  c("yes","don't know", "no"))
+#During the past four weeks, has your mental health interfered with your work or other daily activities?
+temp <- as.character(data$ment_inf)
+temp[is.na(temp)] <- "don't know"
+data$ment_inf = ordered(temp,
+                levels =  c("yes","don't know", "no"))
+
+#During the past four weeks, have your physical symptoms (such as pain) or health in general interfered with your work or other daily activities?
+temp <- as.character(data$phys_inf)
+temp[is.na(temp)] <- "don't know"
+data$phys_inf = ordered(temp,
+                levels =  c("yes","don't know", "no"))
+
+
+
+```
+
+
 
 # How much data do we have
 ```{r}
@@ -55,6 +96,8 @@ temp <- data %>% select(-iron_supp_detailed, -life_qual, -education, -employment
 temp <- na.omit(temp)
 temp %>% group_by(questionnaire) %>% count()
 ```
+
+From `r ncol(temp)` questions.
 
 As we will loose one third of our data if we study only complete data we have try to make decisions on which questions to exclude prior to analyses or which data to impute.
 
@@ -73,13 +116,13 @@ ggplot(temp) + geom_col(aes(x=Variable,y=NAs,fill=questionnaire),pos="dodge") + 
 
 
 ```{r}
-temp <- temp %>% arrange(NAs) %>% tail(6)
+temp <- temp %>% arrange(NAs) %>% tail(10)
 
 ggplot(temp) + geom_col(aes(x=Variable,y=NAs,fill=questionnaire),pos="dodge") +  coord_flip() 
 
 ```
 
-People cannot remember if they have taken vitamine supplements containing iron or vitamine C and they cannot judge if their level of accomplishments has changed. Let's first see if some of these will drop out because they correlate heavily with some other explenatory variable.
+People cannot remember if they have taken vitamine supplements containing iron or vitamine C. Let's first see if some of these will drop out because they correlate heavily with some other explenatory variable.
 
 # Correlations between variables
 
@@ -148,7 +191,7 @@ p.mat <- p.mat[apply(temp,1, any_above),apply(temp,2, any_above)]
 corrplot(temp,type="lower",order="hclust",p.mat=p.mat,sig.level = 0.05,insig = "label_sig",pch.col = 'red',pch.cex = 1)
 ```
 
-# act_light, act_heavy, act_none
+## act_light, act_heavy
 ```{r}
 ggplot(data) + geom_bar(aes(x=act_light))
 ```
@@ -165,10 +208,10 @@ act_heavy looses more data, but has much more spread pontentially contaning more
 
 Keep "act_heavy". 
 
-#health vs phys_cond
+##health_c vs phys_cond
 
 ```{r}
-ggplot(data) + geom_bar(aes(x=health))
+ggplot(data) + geom_bar(aes(x=health_c))
 ```
 ```{r}
 ggplot(data) + geom_bar(aes(x=phys_cond))
@@ -176,15 +219,14 @@ ggplot(data) + geom_bar(aes(x=phys_cond))
 
 
 ```{r}
-table(is.na(data$health))
+table(is.na(data$health_c))
 table(is.na(data$phys_cond))
 ```
 
 
-phys_cond looks better and looses less data. "health" is better validated, but it will be used in the hypothesis testing part, so it can dropped from here 
-health_c can be just dropped.
+phys_cond looks better and looses less data. 
 
-#vita_c vs vita_multi
+##vita_c vs vita_multi
 
 ```{r}
 ggplot(data) + geom_bar(aes(x=vita_C))
@@ -202,7 +244,7 @@ table(is.na(data$vita_multi))
 
 vita_multi looses much less data and looks better so vita_C can be dropped.
 
-#sleep_night vs sleep_24h
+##sleep_night vs sleep_24h
 ```{r , warning=FALSE}
 ggplot(data) + geom_histogram(aes(x=sleep_night),binwidth = 1)
 ```
@@ -215,9 +257,9 @@ table(is.na(data$sleep_night))
 table(is.na(data$sleep_24h))
 ```
 
-Distributions look quite similar, but sleep_looses less data. 
+Distributions look quite similar, but sleep_night looses less data. 
 
-#freq_fruits vs freq_vege
+##freq_fruits vs freq_vege
 ```{r , warning=FALSE}
 ggplot(data) + geom_bar(aes(x=freq_fruits))
 ```
@@ -232,7 +274,7 @@ table(is.na(data$freq_vege))
 
 freq_fruits look better and looses less data.
 
-#freq_sports vs phys_cond
+##freq_sports vs phys_cond
 ```{r , warning=FALSE}
 ggplot(data) + geom_bar(aes(x=freq_sports))
 ```
@@ -247,7 +289,7 @@ table(is.na(data$phys_cond))
 
 Hard to say anything about the distributions, but physical condition looses less data.
 
-#freq_spirits, freq_beer, freq_wine
+##freq_spirits, freq_beer, freq_wine
 ```{r , warning=FALSE}
 ggplot(data) + geom_bar(aes(x=freq_spirits))
 ```
@@ -262,9 +304,20 @@ table(is.na(data$freq_spirits))
 table(is.na(data$freq_beer))
 table(is.na(data$freq_wine))
 ```
-Hard to say, but freq_beer looses least data.
+Hard to say, but freq_beer looses least data. But this does not cover at all persons that drink mostly cider which could be in particular found in pre-menopausal women.
 
-#freq_cutlets, freq_meat, diet, freq_meat, freq_fish, freq_eggs
+To have have some kind of proxy over these incomplete but overlapping questions we will create a new variable freq_alc.
+
+```{r}
+#Combine the alcohol questions
+data$freq_alc <- as.ordered(apply(cbind(data$freq_beer,data$freq_wine,data$freq_spirits),1,max,na.rm=TRUE))
+#Make it in to a factor
+levels(data$freq_alc) <- levels(data$freq_beer)
+
+```
+
+
+##freq_cutlets, freq_meat, diet, freq_meat, freq_fish, freq_eggs
 ```{r , warning=FALSE}
 ggplot(data) + geom_bar(aes(x=freq_cutlets))
 ```
@@ -292,7 +345,7 @@ table(is.na(data$freq_eggs))
 As already seen in the enrollment data paper freq_red_meats distribution looks best also it looses leas data.
 
 
-#BMI, height and weigth
+##BMI, height and weigth
 ```{r , warning=FALSE}
 ggplot(data) + geom_histogram(aes(x=BMI),binwidth = 1)
 ```
@@ -312,7 +365,7 @@ table(is.na(data$weight))
 
 Keep BMI as composite of both.
 
-#freq_energy, freq_sad, health_soc, freq_calm, accomplish
+##freq_energy, freq_sad, health_soc, freq_calm, accomplish
 ```{r , warning=FALSE}
 ggplot(data) + geom_bar(aes(x=freq_energy))
 ```
@@ -342,7 +395,7 @@ freq_energy correlates with phys_cond and can be dropped for that.
 health_soc has a very skewed distiribution.
 freq_calm looses least data and has maybe the best looking distribution.
 
-#h_act_light vs h_act_noen
+##h_act_light vs h_act_noen
 ```{r , warning=FALSE}
 ggplot(data) + geom_bar(aes(x=h_act_light))
 ```
@@ -358,19 +411,56 @@ table(is.na(data$h_act_none))
 h_act_light looses less data.
 
 #Questions to drop
-Based on the above we have decided to drop: act_light, health, health_c, vita_C, sleep_24h, freq_vege, freq_sports, freq_spirits, freq_wine, freq_cutlets, diet, freq_fish, freq_eggs, weight, height, accomplish, freq_energy, health_soc, freq_sad, h_act_none
+Based on the above we have decided to drop: act_light, health_c, vita_C, sleep_24h, freq_vege, freq_sports, freq_spirits, freq_beer, freq_wine, freq_cutlets, diet, freq_fish, freq_eggs, weight, height, accomplish, freq_energy, health_soc, freq_sad, h_act_none
 
 ```{r}
-temp <- data %>% select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB,-donor, -act_light, -health, -health_c, -vita_C, -sleep_24h, -freq_vege, -freq_sports, -freq_spirits, -freq_wine, -freq_cutlets, -diet, -freq_fish, -freq_eggs, -weight, -height, -accomplish, -freq_energy, -health_soc, -freq_sad,-h_act_none)
+temp <- data %>% select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB,-donor, -act_light, -health_c, -vita_C, -sleep_24h, -freq_vege, -freq_sports, -freq_spirits, -freq_wine, -freq_beer, -freq_cutlets, -diet, -freq_fish, -freq_eggs, -weight, -height, -accomplish, -freq_energy, -health_soc, -freq_sad,-h_act_none)
 temp <- na.omit(temp)
 temp %>% group_by(questionnaire) %>% count()
 ```
+From `r ncol(temp)` questions.
 
 How will the sex/menopause groups look
 ```{r}
 temp %>% group_by(questionnaire,group) %>% filter(group != 'Women_pre_menop_no_mens') %>%  count()
 ```
 
-By excluding several questions that correlate with other questions and have distributions that are skewed (accomplish, diet) or are uniformative or are not clearly ordedred factors (like diet) we get complete data for over 100 more persons.
+By excluding several questions that correlate with other questions and have distributions that are skewed (e.g. diet) or are uniformative (e.g. act_ligth)  or are not clearly ordered factors (like diet) we get complete data for about hundred more persons. `r ncol(temp)` might still be too many explenatory variables for the smallest group i.e. Post_menopause_women.
+
+#Code answers as change
+
+```{r}
+#Extract complete data for both questinaires. 
+```
 
 
+
+```{r}
+classes <- sort(unlist(lapply(lapply(temp,class),paste,collapse=" ")))
+classes <- as.tibble(cbind(names(classes),classes))
+```
+
+```{r}
+no_answers <- temp %>% summarise_all(~length(levels(.))) 
+no_answers <- as_tibble(cbind(nms = names(no_answers), t(no_answers)))
+no_answers <- full_join(no_answers,classes,by=c("nms"="V1"))
+no_answers %>% group_by(V2) %>%  count()
+```
+
+```{r}
+no_answers %>%  filter(V2 == 0)
+```
+
+```{r}
+no_answers %>%  filter(V2 == 2)
+```
+
+```{r}
+no_answers %>%  filter(V2 == 3)
+```
+
+```{r}
+no_answers %>%  filter(V2 > 3)
+```
+
+temp %>% summarise_all(~length(levels(.))) 
