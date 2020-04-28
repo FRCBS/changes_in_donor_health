@@ -1,29 +1,30 @@
 ---
-title: "Inital data analysis for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
+title: "Hypothesis regressions for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
 author: "Mikko Arvasr"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+date: "`r Sys.time()`"
 output: html_document
 ---
 
 
 
 ```{r setup, include=FALSE}
+#echo "rmarkdown::render('hypothesis_regressions.Rmd', clean=TRUE,output_format='html_document',output_file='../results/hypothesis_regressions.html')" | R --slave
 knitr::opts_chunk$set(
 	echo = TRUE,
 	message = FALSE,
 	warning = FALSE
 )
 library(tidyverse)
-#library(epitools)
-#library(ez)
+library(epitools)
+library(ez)
 library(lubridate)
-#library(ggbeeswarm)
-#library(tidymodels)
-#library(broom)
-#library(GGally)
-#library(ggfortify)
-#library(car)
-#library(boot)
+library(ggbeeswarm)
+library(tidymodels)
+library(broom)
+library(GGally)
+library(ggfortify)
+library(car)
+library(boot)
 ```
 
 # Executive summary
@@ -43,6 +44,8 @@ load(file = "../data/quest_2_donor_data.rdata")
 
 FD_activity_biomarker_data <- data %>% 
   rename(Ferritin_beginning = Ferritin)
+
+first_questionnaire_data <- final_data %>% filter(questionnaire == "First")
 
 rm(data)
 ```
@@ -114,17 +117,12 @@ FD_activity_biomarker_data <-
            round(0)) %>% 
     dplyr::select(-First, -Second) %>% 
   # Add donor age
- #    left_join(first_questionnaire_data %>% 
-  #              dplyr::select(donor, Age),
-  #            by = "donor") %>% 
-  # Add donro group
-  #  left_join(donor_group_df %>% 
-  #              dplyr::select(donor, group),
-   #           by = "donor") %>% 
-    left_join(FD_activity_biomarker_data, by = "donor") %>% 
-  #rename(age = Age) %>% 
+    left_join(first_questionnaire_data %>%
+              dplyr::select(donor, age),
+            by = "donor") %>%
       filter( group != "Women_pre_menop_no_mens") %>% 
   # Exckude donors with no measure of health evolution
+  left_join(FD_activity_biomarker_data, by = "donor") %>%
   filter(health_evolution != "NA") %>% 
   drop_na(starting_weight,BMI_diff ) %>% 
   filter(Ferritin_beginning <= 400 & CRP < 30)
@@ -147,7 +145,7 @@ CLEANED CODE UNTILL HERE TO WORK WITH NEW DATA
 
 # Regressions
 
-## REgression data
+## Regression data
 
 We select the variabels that will be included in the models.
 
@@ -157,13 +155,15 @@ We also run some trasnformations to make the OR more interpretable:
 * weight, age and Hb were divided by 5 so that a unit increase in the transformed varaible corresponds to an increase in 5 kg or 5 years or 5 Hb points. 
 
 ```{r}
+
+
 regression_data <-
   FD_activity_biomarker_data %>% 
   inner_join(first_questionnaire_data %>% 
-               dplyr::select(donor, QR17),
+               dplyr::select(donor, health),
              by = "donor") %>% 
-  mutate(health_very_good = ifelse(QR17 == "Very_good",1,0),
-         health_excellent = ifelse(QR17 == "Excellent", 1, 0)) %>% 
+  mutate(health_very_good = ifelse(health == "Very_good",1,0),
+         health_excellent = ifelse(health == "Excellent", 1, 0)) %>% 
   mutate(health_outcome = ifelse(health_evolution == "Worsened", 1,0)) %>% 
   mutate(donation_frequency = nb_donations_between_questionnaires/(interval_between_quest/12) ) %>% 
   mutate(log_Ferritin_beginning = log(Ferritin_beginning)/log(2),
@@ -367,6 +367,14 @@ plot(logit_men)
 vif(logit_men)
 ```
 
+
+```{r}
+reg_data<- list(regression_data_men,regression_data_post_menop_women,regression_data_pre_menop_women)
+file <- "../results/hypregdata.rdata"
+save(reg_data,file=file)
+```
+
+
 # Bootstraps
 ```{r}
 
@@ -455,7 +463,9 @@ output_file_distrib = ("../results/bootstraps/coeff_boot_distrib_seed_125_ctr_st
 output_file_Bca = ("../results/bootstraps/coeff_boot_Bca_seed_125_ctr_strata_final.rdata")
 
 
-get_from_file_ferr = TRUE
+#get_from_file_ferr = TRUE
+
+get_from_file_ferr <- all(file.exists(output_file_distrib),file.exists(output_file_Bca) )
 
 set.seed(125)
 group_str = "Pre_menopause_women"
@@ -611,19 +621,19 @@ ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.png",
 ```{r eval=FALSE, include=FALSE}
 final_data %>% 
   filter(questionnaire == "First") %>% 
-  dplyr::select(donor, QR17,group) %>% 
+  dplyr::select(donor, health,group) %>% 
   inner_join(FD_activity_biomarker_data,
              by = c("donor", "group")) %>% 
-  # count(group, QR17, health_evolution) %>% 
-  # group_by(group, QR17) %>% 
+  # count(group, health, health_evolution) %>% 
+  # group_by(group, health) %>% 
   # mutate(proportion = n / sum(n)) %>% 
   # ungroup() %>% 
   mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
                            group == "Post_menopause_women" ~ "Post-menopausal \n women",
                           TRUE ~ "Men"),
         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
-  mutate(QR17 = ifelse(QR17 == "Very_good" , "Very good", as.character(QR17)),
-        QR17 = ordered(QR17, levels = c(  "Satisfactory", "Good", "Very good", "Excellent") )) %>% 
+  mutate(health = ifelse(health == "Very_good" , "Very good", as.character(health)),
+        health = ordered(health, levels = c(  "Satisfactory", "Good", "Very good", "Excellent") )) %>% 
     mutate(health_evolution = plyr::revalue(health_evolution, health_evolution_values),
            health_evolution = ordered(health_evolution, levels = c("Worse", "Same", "Better"))) %>% 
   ggplot(aes(x  = health_evolution,
@@ -635,7 +645,7 @@ final_data %>%
     scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
                      limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
   # scale_y_log10() +
-  facet_grid(group ~ QR17) +
+  facet_grid(group ~ health) +
   theme_bw() +
   guides(color =  FALSE) +
   xlab(" Evolution of health rating between questionnaires") +
