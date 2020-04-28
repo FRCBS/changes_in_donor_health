@@ -1,12 +1,14 @@
 ---
 title: "Inital data analysis for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
 author: "Mikko Arvas"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+date: "`r Sys.time()`"
 output: html_document
 ---
 
 
 ```{r setup, include=FALSE}
+Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
+Sys.setenv(LANG = "en_US.UTF-8")
 # echo "rmarkdown::render('inital_data_analysis.Rmd', clean=TRUE,output_format='html_document',output_file='../results/inital_data_analysis.html')" | R --slave
 knitr::opts_chunk$set(
 	echo = TRUE,
@@ -15,22 +17,16 @@ knitr::opts_chunk$set(
 )
 library(tidyverse)
 library(corrplot)
-#library(epitools)
-#library(ez)
+library(knitr)
 library(lubridate)
-#library(ggbeeswarm)
-#library(tidymodels)
-#library(broom)
-#library(GGally)
-#library(ggfortify)
-#library(car)
-#library(boot)
 ```
+
+
 
 # Executive summary
 
 
-In this file we carry out inital data analysis to decide which explenatory variables to exclude based on correlations between the explenatory variables and counts is missing data.
+In this file we carry out inital data analysis to decide which explenatory variables to exclude based on correlations between the explenatory variables, shapes of variables distributions and counts of missing data. Then the chosen variables are coded as change between the 2 questionnaires.
 
 # Load the data
 
@@ -59,7 +55,7 @@ data %>% group_by(questionnaire) %>% count()
 ```
 
 
-#Recodings
+#Preprocessing recodings
 Questions with 3 possible answers : "no", "yes", "don't know", are recoded as an ordered factor with 3 levels: "yes"< "don't know" <  "no".  
 ```{r}
 #Have you felt that you were able to accomplish less than you would have liked to?
@@ -190,6 +186,9 @@ temp <- temp[apply(temp,1, any_above),apply(temp,2, any_above)]
 p.mat <- p.mat[apply(temp,1, any_above),apply(temp,2, any_above)]
 corrplot(temp,type="lower",order="hclust",p.mat=p.mat,sig.level = 0.05,insig = "label_sig",pch.col = 'red',pch.cex = 1)
 ```
+
+#Choose what to keep
+Between those that correlate above 0.5 choose which variable to keep to present the correlaiting variables in the exploratory analysis.
 
 ## act_light, act_heavy
 ```{r}
@@ -410,57 +409,343 @@ table(is.na(data$h_act_none))
 
 h_act_light looses less data.
 
-#Questions to drop
+#Drop questions based on correlation analysis
 Based on the above we have decided to drop: act_light, health_c, vita_C, sleep_24h, freq_vege, freq_sports, freq_spirits, freq_beer, freq_wine, freq_cutlets, diet, freq_fish, freq_eggs, weight, height, accomplish, freq_energy, health_soc, freq_sad, h_act_none
 
 ```{r}
-temp <- data %>% select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB,-donor, -act_light, -health_c, -vita_C, -sleep_24h, -freq_vege, -freq_sports, -freq_spirits, -freq_wine, -freq_beer, -freq_cutlets, -diet, -freq_fish, -freq_eggs, -weight, -height, -accomplish, -freq_energy, -health_soc, -freq_sad,-h_act_none)
+temp <- data %>% select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB, -act_light, -health_c, -vita_C, -sleep_24h, -freq_vege, -freq_sports, -freq_spirits, -freq_wine, -freq_beer, -freq_cutlets, -diet, -freq_fish, -freq_eggs, -weight, -height, -accomplish, -freq_energy, -health_soc, -freq_sad,-h_act_none)
 temp <- na.omit(temp)
 temp %>% group_by(questionnaire) %>% count()
 ```
 From `r ncol(temp)` questions.
+
+```{r}
+
+#But questionnaire, donor, group, age, sex and date are not procesed into change between questionnaires
+tx <- setdiff(colnames(temp),c("questionnaire", "donor", "group", "age", "sex","date" ))
+tx
+```
+
+
+```{r}
+length(tx)
+```
 
 How will the sex/menopause groups look
 ```{r}
 temp %>% group_by(questionnaire,group) %>% filter(group != 'Women_pre_menop_no_mens') %>%  count()
 ```
 
-By excluding several questions that correlate with other questions and have distributions that are skewed (e.g. diet) or are uniformative (e.g. act_ligth)  or are not clearly ordered factors (like diet) we get complete data for about hundred more persons. `r ncol(temp)` might still be too many explenatory variables for the smallest group i.e. Post_menopause_women.
+By excluding several questions that correlate with other questions and have distributions that are skewed (e.g. diet) or are uniformative (e.g. act_ligth)  or are not clearly ordered factors (like diet) we get complete data for about hundred more persons. There might still be too many explenatory variables for the smallest group i.e. Post_menopause_women and we will still loose data when we look for complete cases in both questionaires.
 
-#Code answers as change
+#Recode answers as change between the questionnaires
 
+Exclude questions that are dealt with later in the regression data processing:
+BMI, smoking, health, date, age, group. Health has been already excluded.
 ```{r}
-#Extract complete data for both questinaires. 
+temp <- temp %>% select(-BMI,-smoking,-date,-age,-group,-sex)
+#Extract complete data for both questinaires and separate questionaire answers into different columns for processing
+splitbyq <- split(temp,f=temp$questionnaire)
+first <- splitbyq[["First"]]
+second <- splitbyq[["Second"]]
+colnames(second) <- paste0(colnames(second),"_2")
+temp <- inner_join(first,second,by=c("donor"="donor_2"))
+cat(nrow(temp),"complete cases in both questionnaires\n")
 ```
 
 
 
 ```{r}
-classes <- sort(unlist(lapply(lapply(temp,class),paste,collapse=" ")))
+
+classes <- sort(unlist(lapply(lapply(first,class),paste,collapse=" ")))
 classes <- as.tibble(cbind(names(classes),classes))
+no_answers <- first %>% summarise_all(~length(levels(.)))
+no_answers <- as_tibble(cbind(variable = names(no_answers), t(no_answers)))
+no_answers <- full_join(no_answers,classes,by=c("variable"="V1")) %>% rename(no_answers=V2)
+no_answers %>% group_by(no_answers)  %>% count() %>%  arrange(n)
 ```
 
 ```{r}
-no_answers <- temp %>% summarise_all(~length(levels(.))) 
-no_answers <- as_tibble(cbind(nms = names(no_answers), t(no_answers)))
-no_answers <- full_join(no_answers,classes,by=c("nms"="V1"))
-no_answers %>% group_by(V2) %>%  count()
+no_answers %>%  filter(no_answers == 0)
+```
+
+no_aswers == 0 are non-factoral variables. Change in cholesterol, blood_sugar, HBP, low_hb_hist, anemia_hist, high_hb_hist is coded as if the status changed during the study.
+
+```{r}
+temp <- temp %>% mutate(cholesterol_d = case_when(cholesterol == 0 & cholesterol_2 == 1 ~ 1,
+                                          TRUE ~ 0
+                                          )) %>% mutate(cholesterol_d = as.logical(cholesterol_d))
+
+temp <- temp %>% mutate(blood_sugar_d = case_when(blood_sugar == 0 & blood_sugar_2 == 1 ~ 1,
+                                          TRUE ~ 0
+                                          )) %>% mutate(blood_sugar_d = as.logical(blood_sugar_d))
+
+temp <- temp %>% mutate(HBP_d = case_when(HBP == 0 & HBP_2 == 1 ~ 1,
+                                          TRUE ~ 0
+                                          )) %>% mutate(HBP_d = as.logical(HBP_d))
+
+temp <- temp %>% mutate(low_hb_hist_d = case_when(low_hb_hist == 0 & low_hb_hist_2 == 1 ~ 1,
+                                          TRUE ~ 0
+                                          )) %>% mutate(low_hb_hist_d = as.logical(low_hb_hist_d))
+
+temp <- temp %>% mutate(anemia_hist_d = case_when(anemia_hist == 0 & anemia_hist_2 == 1 ~ 1,
+                                          TRUE ~ 0
+                                          )) %>% mutate(anemia_hist_d = as.logical(anemia_hist_d))
+
+temp <- temp %>% mutate(high_hb_hist_d = case_when(high_hb_hist == 0 & high_hb_hist_2 == 1 ~ 1,
+                                          TRUE ~ 0
+                                          )) %>% mutate(high_hb_hist_d = as.logical(high_hb_hist_d))
+```
+
+
+iron_supp recoded as either reducing, stable or increasing.
+
+```{r}
+temp <- temp %>% mutate(iron_supp_d = case_when(iron_supp == FALSE & iron_supp_2 == TRUE ~ "Increased",
+                                                iron_supp == TRUE & iron_supp_2 == FALSE ~ "Reduced",
+                                          TRUE ~ "Stable"
+                                          )) %>% mutate( iron_supp_d= factor(iron_supp_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+```
+
+sleep_night recoded as difference
+
+```{r}
+temp <- temp %>% mutate(sleep_night_d = sleep_night_2 - sleep_night)
 ```
 
 ```{r}
-no_answers %>%  filter(V2 == 0)
+no_answers %>%  filter(no_answers == 6)
+```
+
+These are all ordered factors. They are recoded as  either reducing, stable or increasing.
+
+```{r}
+temp <- temp %>% mutate(freq_calm_d = as.numeric(freq_calm_2)  - as.numeric(freq_calm)) %>% 
+  mutate(freq_calm_d = case_when(
+    freq_calm_d > 0 ~ "Increased",
+    freq_calm_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( freq_calm_d= factor(freq_calm_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+temp <- temp %>% mutate(freq_red_meat_d = as.numeric(freq_red_meat_2)  - as.numeric(freq_red_meat)) %>% 
+  mutate(freq_red_meat_d = case_when(
+    freq_red_meat_d > 0 ~ "Increased",
+    freq_red_meat_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( freq_red_meat_d= factor(freq_red_meat_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+temp <- temp %>% mutate(freq_fruits_d = as.numeric(freq_fruits_2)  - as.numeric(freq_fruits)) %>% 
+  mutate(freq_fruits_d = case_when(
+    freq_fruits_d > 0 ~ "Increased",
+    freq_fruits_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( freq_fruits_d= factor(freq_fruits_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+temp <- temp %>% mutate(freq_juices_d = as.numeric(freq_juices_2)  - as.numeric(freq_juices)) %>% 
+  mutate(freq_juices_d = case_when(
+    freq_juices_d > 0 ~ "Increased",
+    freq_juices_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( freq_juices_d= factor(freq_juices_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+temp <- temp %>% mutate(freq_wholem_d = as.numeric(freq_wholem_2)  - as.numeric(freq_wholem)) %>% 
+  mutate(freq_wholem_d = case_when(
+    freq_wholem_d > 0 ~ "Increased",
+    freq_wholem_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( freq_wholem_d= factor(freq_wholem_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+temp <- temp %>% mutate(freq_milk_d = as.numeric(freq_milk_2)  - as.numeric(freq_milk)) %>% 
+  mutate(freq_milk_d = case_when(
+    freq_milk_d > 0 ~ "Increased",
+    freq_milk_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( freq_milk_d= factor(freq_milk_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+temp <- temp %>% mutate(freq_cof_d = as.numeric(freq_cof_2)  - as.numeric(freq_cof)) %>% 
+  mutate(freq_cof_d = case_when(
+    freq_cof_d > 0 ~ "Increased",
+    freq_cof_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( freq_cof_d= factor(freq_cof_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+temp <- temp %>% mutate(freq_tea_d = as.numeric(freq_tea_2)  - as.numeric(freq_tea)) %>% 
+  mutate(freq_tea_d = case_when(
+    freq_tea_d > 0 ~ "Increased",
+    freq_tea_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( freq_tea_d= factor(freq_tea_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+temp <- temp %>% mutate(phys_cond_d = as.numeric(phys_cond_2)  - as.numeric(phys_cond)) %>% 
+  mutate(phys_cond_d = case_when(
+    phys_cond_d > 0 ~ "Increased",
+    phys_cond_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( phys_cond_d= factor(phys_cond_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+```
+
+
+
+
+```{r}
+no_answers %>%  filter(no_answers == 4)
+```
+
+
+These are all ordered factors. They are recoded as  either reducing, stable or increasing.
+```{r}
+temp <- temp %>% mutate(act_heavy_d = as.numeric(act_heavy_2)  - as.numeric(act_heavy)) %>% 
+  mutate(act_heavy_d = case_when(
+    act_heavy_d > 0 ~ "Increased",
+    act_heavy_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( act_heavy_d= factor(act_heavy_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+#sleep_enough
+temp <- temp %>% mutate(sleep_enough_d = as.numeric(sleep_enough_2)  - as.numeric(sleep_enough)) %>% 
+  mutate(sleep_enough_d = case_when(
+    sleep_enough_d > 0 ~ "Increased",
+    sleep_enough_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( sleep_enough_d= factor(sleep_enough_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+#day_act
+temp <- temp %>% mutate(day_act_d = as.numeric(day_act_2)  - as.numeric(day_act)) %>% 
+  mutate(day_act_d = case_when(
+    day_act_d > 0 ~ "Increased",
+    day_act_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( day_act_d= factor(day_act_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+#h_act_light
+temp <- temp %>% mutate(h_act_light_d = as.numeric(h_act_light_2)  - as.numeric(h_act_light)) %>% 
+  mutate(h_act_light_d = case_when(
+    h_act_light_d > 0 ~ "Increased",
+    h_act_light_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( h_act_light_d= factor(h_act_light_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+#vita_multi
+temp <- temp %>% mutate(vita_multi_d = as.numeric(vita_multi_2)  - as.numeric(vita_multi)) %>% 
+  mutate(vita_multi_d = case_when(
+    vita_multi_d > 0 ~ "Increased",
+    vita_multi_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( vita_multi_d= factor(vita_multi_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+#vita_iron
+temp <- temp %>% mutate(vita_iron_d = as.numeric(vita_iron_2)  - as.numeric(vita_iron)) %>% 
+  mutate(vita_iron_d = case_when(
+    vita_iron_d > 0 ~ "Increased",
+    vita_iron_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( vita_iron_d= factor(vita_iron_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+```
+
+But these 2 are diffent order of time and they are turned around to have same reducing, stable or increasing coding.
+
+sleep_tired Levels: always_or_almost < mostly < rarely < never i.e. is their tiredness reduced, stable or increasing
+
+anti_inf: Levels: daily < not_daily < occasionally < none
+
+```{r}
+temp <- temp %>% mutate(sleep_tired_d = as.numeric(sleep_tired)  - as.numeric(sleep_tired_2)) %>% 
+  mutate(sleep_tired_d = case_when(
+    sleep_tired_d > 0 ~ "Increased",
+    sleep_tired_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( sleep_tired_d= factor(sleep_tired_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+temp <- temp %>% mutate(anti_inf_d = as.numeric(anti_inf)  - as.numeric(anti_inf_2)) %>% 
+  mutate(anti_inf_d = case_when(
+    anti_inf_d > 0 ~ "Increased",
+    anti_inf_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( anti_inf_d= factor(anti_inf_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+
+```
+
+
+```{r}
+no_answers %>%  filter(no_answers == 3)
+```
+
+phys_inf Levels: yes < don't know < no -> has your physical health inferred? e.g. first : no, second: yes -> physical health inferring "Increased"
+
+ment_inf Levels: yes < don't know < no -> has your mental health inferred?
+
+```{r}
+temp <- temp %>% mutate(phys_inf_d = as.numeric(phys_inf)  - as.numeric(phys_inf_2)) %>% 
+  mutate(phys_inf_d = case_when(
+    phys_inf_d > 0 ~ "Increased",
+    phys_inf_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( phys_inf_d= factor(phys_inf_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+temp <- temp %>% mutate(ment_inf_d = as.numeric(ment_inf)  - as.numeric(ment_inf_2)) %>% 
+  mutate(ment_inf_d = case_when(
+    ment_inf_d > 0 ~ "Increased",
+    ment_inf_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( ment_inf_d= factor(ment_inf_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+
+```
+
+
+```{r}
+no_answers %>%  filter(no_answers == 5)
+```
+
+freq_alc Levels: daily_or_almost < a_few_per_week < a_few_per_month < very_rarely < never 
+
+```{r}
+temp <- temp %>% mutate(freq_alc_d = as.numeric(freq_alc)  - as.numeric(freq_alc_2)) %>% 
+  mutate(freq_alc_d = case_when(
+    freq_alc_d > 0 ~ "Increased",
+    freq_alc_d < 0 ~ "Reduced",
+    TRUE ~ "Stable"
+  )) %>% mutate( freq_alc_d= factor(freq_alc_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+
+```
+
+Select only the change variables and store.
+
+```{r}
+cols2keep<- grep("_d$",colnames(temp),value = TRUE)
+cols2keep
+```
+```{r}
+cols2keep<- c("donor",cols2keep)
+changedata <- temp %>% select(cols2keep)
+dim(changedata)
+```
+
+#Checks
+```{r}
+setdiff(colnames(first),gsub("_d$","",colnames(changedata)))
 ```
 
 ```{r}
-no_answers %>%  filter(V2 == 2)
+setdiff(gsub("_d$","",colnames(changedata)),colnames(first))
+```
+
+
+```{r}
+classes <- sort(unlist(lapply(lapply(changedata,class),paste,collapse=" ")))
+classes <- as.tibble(cbind(names(classes),classes))
+levels <- unlist(lapply(lapply(changedata,levels),paste,collapse=" "))
+levels <- as.tibble(cbind(names(levels),levels))
+changedataclasses <- full_join(classes,levels,by=c("V1"="V1")) %>% rename(variable=V1) 
+kable(changedataclasses,caption="Classes and levels of variables only analysed in explorative analysis")
 ```
 
 ```{r}
-no_answers %>%  filter(V2 == 3)
+file <- "../results/changedata.rdata"
+save(changedata,file=file)
 ```
 
-```{r}
-no_answers %>%  filter(V2 > 3)
-```
-
-temp %>% summarise_all(~length(levels(.))) 
