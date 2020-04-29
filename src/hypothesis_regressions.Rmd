@@ -96,7 +96,7 @@ FD_activity_biomarker_data <-
                                         First == "no" &  Second %in% c("daily", "sometimes") ~ "new smoker",
                                         First %in% c("daily", "sometimes") & Second %in% c("daily", "sometimes") ~ "always smoker",
                                         First %in% c("daily", "sometimes") & Second == "no" ~"Former smoker",
-                                        TRUE ~"NA")) %>% 
+                                        TRUE ~"NA")) %>%  
     dplyr::select(-First, -Second) %>% 
     full_join(final_data, by = "donor") %>%
     dplyr::select(donor, starting_weight, BMI_diff, health, smoking_behavior, questionnaire) %>% 
@@ -141,7 +141,6 @@ final_data %>%
    count(group)
 ```
 
-CLEANED CODE UNTILL HERE TO WORK WITH NEW DATA
 
 # Regressions
 
@@ -164,16 +163,18 @@ regression_data <-
              by = "donor") %>% 
   mutate(health_very_good = ifelse(health == "Very_good",1,0),
          health_excellent = ifelse(health == "Excellent", 1, 0)) %>% 
-  mutate(health_outcome = ifelse(health_evolution == "Worsened", 1,0)) %>% 
+  mutate(health_outcome = ifelse(health_evolution == "Worsened", 1,0)) %>%
+  mutate(health_outcome_neg = ifelse(health_evolution == "Improved", 1,0)) %>%
   mutate(donation_frequency = nb_donations_between_questionnaires/(interval_between_quest/12) ) %>% 
   mutate(log_Ferritin_beginning = log(Ferritin_beginning)/log(2),
          starting_weight = starting_weight/5,
          age = age/5,
          Hb_beginning = Hb_v/5) %>% 
   dplyr::select(donor, starting_weight,BMI_diff, age, group, log_Ferritin_beginning, Hb_beginning,
-                donation_frequency, health_very_good,health_excellent,health_outcome  ) 
+                donation_frequency, health_very_good,health_excellent,health_outcome,health_outcome_neg, smoking_behavior  )
+
   
-  
+regression_data$smoking_behavior <- factor(regression_data$smoking_behavior)
 ```
 
 
@@ -191,7 +192,7 @@ regression_data_pre_menop_women <-
   dplyr::select(-value) %>% 
   spread(key = key, value = value_scale) %>% 
   inner_join(regression_data %>% 
-               dplyr::select(donor, health_very_good, health_excellent, health_outcome),
+               dplyr::select(donor, health_very_good, health_excellent, health_outcome,health_outcome_neg,smoking_behavior),
              by = "donor")
 
 ```
@@ -247,7 +248,7 @@ regression_data_post_menop_women <-
   dplyr::select(-value) %>% 
   spread(key = key, value = value_scale) %>% 
   inner_join(regression_data %>% 
-               dplyr::select(donor, health_very_good, health_excellent, health_outcome),
+               dplyr::select(donor, health_very_good, health_excellent, health_outcome,health_outcome_neg,smoking_behavior),
              by = "donor")
 
 ```
@@ -315,7 +316,7 @@ regression_data_men <-
   dplyr::select(-value) %>% 
   spread(key = key, value = value_scale) %>% 
   inner_join(regression_data %>% 
-               dplyr::select(donor, health_outcome, health_very_good, health_excellent),
+               dplyr::select(donor, health_outcome, health_very_good, health_excellent,health_outcome_neg,smoking_behavior),
              by = "donor")
 ```
 
@@ -369,7 +370,7 @@ vif(logit_men)
 
 
 ```{r}
-reg_data<- list(regression_data_men,regression_data_post_menop_women,regression_data_pre_menop_women)
+reg_data<- list(men=regression_data_men,womenpost=regression_data_post_menop_women,womenpre=regression_data_pre_menop_women)
 file <- "../results/hypregdata.rdata"
 save(reg_data,file=file)
 ```

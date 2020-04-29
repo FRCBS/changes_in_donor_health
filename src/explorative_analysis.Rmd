@@ -28,6 +28,7 @@ library(lubridate)
 #library(boot)
 ```
 
+
 # Executive summary
 
 This file includes the code for computing the regression results regarding the predictors of the evolution of self-related health during the FinDonor study for the 
@@ -43,20 +44,74 @@ load(file = "../results/changedata.rdata")
 #Load data used in hypothesis regressions
 load(file = "../results/hypregdata.rdata")
 
+
+#We cannot know if our "Reduced","Stable","Increased" factor levels are equally spaced. Hence make the variables unordered.
+#changedata %>% mutate_at(funs(ordered), l1) %>% mutate_each_(funs(as.numeric), l2)
+changedata <- changedata %>% mutate_if(is.ordered, function(x){factor(x,ordered = FALSE)})
+regression_data_men <- inner_join(changedata,reg_data$men,by=c("donor"="donor"))
+regression_data_post_menop_women <- inner_join(changedata,reg_data$womenpost,by=c("donor"="donor"))
+regression_data_pre_menop_women <- inner_join(changedata,reg_data$womenpre,by=c("donor"="donor"))
+
+#Bringing in extra data will bring some NAs
+regression_data_men <- droplevels(na.omit(regression_data_men))
+regression_data_post_menop_women <- droplevels(na.omit(regression_data_post_menop_women))
+regression_data_pre_menop_women <- droplevels(na.omit(regression_data_pre_menop_women))
 ```
 
 
+# Premenopausal women
 
+Check that final data has some variation
+```{r}
+summary(regression_data_pre_menop_women)
+```
+
+There is only one case who aquired high Hb during the research period. high_hb_hist_d should be removed.
 
 ```{r}
 logit_pre_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
                                log_Ferritin_beginning + Hb_beginning +
-                              donation_frequency + health_very_good + health_excellent,
+                              donation_frequency + health_very_good + health_excellent +
+                             cholesterol_d + 
+                               blood_sugar_d + 
+                               HBP_d + 
+                               low_hb_hist_d + 
+                               anemia_hist_d + 
+                              # high_hb_hist_d + 
+                               iron_supp_d + 
+                               sleep_night_d + 
+                               freq_calm_d + 
+                               freq_red_meat_d + 
+                               freq_fruits_d + 
+                               freq_juices_d + 
+                               freq_wholem_d + 
+                               freq_milk_d + 
+                               freq_cof_d + 
+                               freq_tea_d + 
+                               phys_cond_d + 
+                               act_heavy_d + 
+                               sleep_enough_d + 
+                               day_act_d + 
+                               h_act_light_d + 
+                               vita_multi_d + 
+                               vita_iron_d + 
+                               sleep_tired_d + 
+                               anti_inf_d + 
+                               phys_inf_d + 
+                               ment_inf_d + 
+                               freq_alc_d +
+                               life_qual +
+                               education + 
+                               employment +
+                               smoking_behavior
+                             ,
                              data=regression_data_pre_menop_women,
                             family="binomial")
  
  summary(logit_pre_menop_women)
 ```
+
+cholesterol_d + blood_sugar_d + HBP_d + low_hb_hist_d + anemia_hist_d + high_hb_hist_d + iron_supp_d + sleep_night_d + freq_calm_d + freq_red_meat_d + freq_fruits_d + freq_juices_d + freq_wholem_d + freq_milk_d + freq_cof_d + freq_tea_d + phys_cond_d + act_heavy_d + sleep_enough_d + day_act_d + h_act_light_d + vita_multi_d + vita_iron_d + sleep_tired_d + anti_inf_d + phys_inf_d + ment_inf_d + freq_alc_d 
 
 ```{r}
 plot(logit_pre_menop_women)
@@ -72,5 +127,146 @@ tidy_logit_pre_menop_women <-
   tidy %>% 
   mutate(OR = exp(estimate),
          group = "Pre_menopause_women")
+```
+
+
+# Post menopausal women
+
+```{r}
+summary(regression_data_post_menop_women)
+```
+
+There are no cases who aquired high Hb during the research period. high_hb_hist_d should be removed.
+
+```{r}
+logit_post_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
+                               log_Ferritin_beginning + Hb_beginning +
+                              donation_frequency + health_very_good + health_excellent +
+                             cholesterol_d + 
+                               blood_sugar_d + 
+                               HBP_d + 
+                               low_hb_hist_d + 
+                               anemia_hist_d + 
+                              # high_hb_hist_d + 
+                               iron_supp_d + 
+                               sleep_night_d + 
+                               freq_calm_d + 
+                               freq_red_meat_d + 
+                               freq_fruits_d + 
+                               freq_juices_d + 
+                               freq_wholem_d + 
+                               freq_milk_d + 
+                               freq_cof_d + 
+                               freq_tea_d + 
+                               phys_cond_d + 
+                               act_heavy_d + 
+                               sleep_enough_d + 
+                               day_act_d + 
+                               h_act_light_d + 
+                               vita_multi_d + 
+                               vita_iron_d + 
+                               sleep_tired_d + 
+                               anti_inf_d + 
+                               phys_inf_d + 
+                               ment_inf_d + 
+                               freq_alc_d +
+                               life_qual +
+                               education + 
+                               employment +
+                               smoking_behavior
+                             ,
+                             data=regression_data_post_menop_women,
+                            family="binomial")
+ 
+ summary(logit_post_menop_women)
+```
+
+cholesterol_d + blood_sugar_d + HBP_d + low_hb_hist_d + anemia_hist_d + high_hb_hist_d + iron_supp_d + sleep_night_d + freq_calm_d + freq_red_meat_d + freq_fruits_d + freq_juices_d + freq_wholem_d + freq_milk_d + freq_cof_d + freq_tea_d + phys_cond_d + act_heavy_d + sleep_enough_d + day_act_d + h_act_light_d + vita_multi_d + vita_iron_d + sleep_tired_d + anti_inf_d + phys_inf_d + ment_inf_d + freq_alc_d 
+
+```{r}
+plot(logit_post_menop_women)
+```
+
+```{r}
+vif(logit_post_menop_women)
+```
+
+```{r}
+tidy_logit_post_menop_women <-
+  logit_post_menop_women %>% 
+  tidy %>% 
+  mutate(OR = exp(estimate),
+         group = "Post_menopause_women")
+```
+
+
+
+# Post menopausal women
+
+```{r}
+summary(regression_data_men)
+```
+
+There are 2 cases who aquired high Hb during the research period and it was not used in models with women. high_hb_hist_d should be removed.
+
+```{r}
+logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
+                               log_Ferritin_beginning + Hb_beginning +
+                              donation_frequency + health_very_good + health_excellent +
+                             cholesterol_d + 
+                               blood_sugar_d + 
+                               HBP_d + 
+                               low_hb_hist_d + 
+                               anemia_hist_d + 
+                              # high_hb_hist_d + 
+                               iron_supp_d + 
+                               sleep_night_d + 
+                               freq_calm_d + 
+                               freq_red_meat_d + 
+                               freq_fruits_d + 
+                               freq_juices_d + 
+                               freq_wholem_d + 
+                               freq_milk_d + 
+                               freq_cof_d + 
+                               freq_tea_d + 
+                               phys_cond_d + 
+                               act_heavy_d + 
+                               sleep_enough_d + 
+                               day_act_d + 
+                               h_act_light_d + 
+                               vita_multi_d + 
+                               vita_iron_d + 
+                               sleep_tired_d + 
+                               anti_inf_d + 
+                               phys_inf_d + 
+                               ment_inf_d + 
+                               freq_alc_d +
+                              life_qual +
+                               education + 
+                               employment +
+                              smoking_behavior
+                             ,
+                             data=regression_data_men,
+                            family="binomial")
+ 
+ summary(logit_men)
+```
+
+cholesterol_d + blood_sugar_d + HBP_d + low_hb_hist_d + anemia_hist_d + high_hb_hist_d + iron_supp_d + sleep_night_d + freq_calm_d + freq_red_meat_d + freq_fruits_d + freq_juices_d + freq_wholem_d + freq_milk_d + freq_cof_d + freq_tea_d + phys_cond_d + act_heavy_d + sleep_enough_d + day_act_d + h_act_light_d + vita_multi_d + vita_iron_d + sleep_tired_d + anti_inf_d + phys_inf_d + ment_inf_d + freq_alc_d 
+
+```{r}
+plot(logit_men)
+```
+
+```{r}
+vif(logit_men)
+```
+
+```{r}
+tidy_logit_men <-
+  logit_men %>% 
+  tidy %>% 
+  mutate(OR = exp(estimate),
+         group = "Men")
 ```
 
