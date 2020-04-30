@@ -1,31 +1,37 @@
 ---
-title: "Inital data analysis for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
+title: "Explorative data analysis for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
 author: "Mikko Arvasr"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+date: "`r Sys.time()`"
 output: html_document
-    df_print: paged
-
 ---
 
 
 
 ```{r setup, include=FALSE}
+Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
+Sys.setenv(LANG = "en_US.UTF-8")
+# echo "rmarkdown::render('explorative_analysis.Rmd', clean=TRUE,output_format='html_document',output_file='../results/explorative_analysis.html')" | R --slave
 knitr::opts_chunk$set(
 	echo = TRUE,
 	message = FALSE,
 	warning = FALSE
 )
+library(epiDisplay)
 library(tidyverse)
+library(safeBinaryRegression)
 #library(epitools)
 #library(ez)
 library(lubridate)
 #library(ggbeeswarm)
-#library(tidymodels)
+library(tidymodels)
 #library(broom)
 #library(GGally)
 #library(ggfortify)
-#library(car)
-#library(boot)
+library(car)
+library(boot)
+
+#https://stats.stackexchange.com/questions/11109/how-to-deal-with-perfect-separation-in-logistic-regression
+#https://stats.stackexchange.com/questions/45803/logistic-regression-in-r-resulted-in-perfect-separation-hauck-donner-phenomenon
 ```
 
 
@@ -56,6 +62,12 @@ regression_data_pre_menop_women <- inner_join(changedata,reg_data$womenpre,by=c(
 regression_data_men <- droplevels(na.omit(regression_data_men))
 regression_data_post_menop_women <- droplevels(na.omit(regression_data_post_menop_women))
 regression_data_pre_menop_women <- droplevels(na.omit(regression_data_pre_menop_women))
+
+#Fuse back together for later use "Pre_menopause_women", "Post_menopause_women","Men"
+m<- regression_data_men %>% mutate(group = "Men")
+e<- regression_data_post_menop_women %>% mutate(group = "Post_menopause_women")
+o <- regression_data_pre_menop_women %>% mutate(group = "Pre_menopause_women")
+regression_data <- bind_rows(m,e,)
 ```
 
 
@@ -66,17 +78,18 @@ Check that final data has some variation
 summary(regression_data_pre_menop_women)
 ```
 
-There is only one case who aquired high Hb during the research period. high_hb_hist_d should be removed.
+There is only one case who aquired high Hb during the research period. With "education" and "smoking" included as explenatory variables the glm function could not find a fit for post_menopause women. Futhermore for men anemia_history caused "perfect separation" found with function "safeBinaryRegression".  
+For sake of completnes  all these variables are removed from all the models. None of these variables showed any level of significance in the groups of donors were they could be modelled hence excluding is not likely to miss any true effects.
 
 ```{r}
 logit_pre_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
                                log_Ferritin_beginning + Hb_beginning +
                               donation_frequency + health_very_good + health_excellent +
                              cholesterol_d + 
-                               blood_sugar_d + 
+                             blood_sugar_d + 
                                HBP_d + 
                                low_hb_hist_d + 
-                               anemia_hist_d + 
+                             #  anemia_hist_d + 
                               # high_hb_hist_d + 
                                iron_supp_d + 
                                sleep_night_d + 
@@ -101,12 +114,12 @@ logit_pre_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                ment_inf_d + 
                                freq_alc_d +
                                life_qual +
-                               education + 
-                               employment +
-                               smoking_behavior
+                             #  education + 
+                               employment 
+                            # smoking_behavior
                              ,
                              data=regression_data_pre_menop_women,
-                            family="binomial")
+                            family="binomial", separation = 'test')
  
  summary(logit_pre_menop_women)
 ```
@@ -122,11 +135,17 @@ vif(logit_pre_menop_women)
 ```
 
 ```{r}
+logistic.display(logit_pre_menop_women)
+```
+
+
+```{r}
 tidy_logit_pre_menop_women <-
   logit_pre_menop_women %>% 
   tidy %>% 
   mutate(OR = exp(estimate),
-         group = "Pre_menopause_women")
+         group = "Pre_menopause_women") %>% mutate(p.value = p.value * 2)
+#p-values are multiplied by 2 as we will make also second analysis for improved health with the same data set.
 ```
 
 
@@ -143,10 +162,10 @@ logit_post_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff 
                                log_Ferritin_beginning + Hb_beginning +
                               donation_frequency + health_very_good + health_excellent +
                              cholesterol_d + 
-                               blood_sugar_d + 
+                              blood_sugar_d + 
                                HBP_d + 
                                low_hb_hist_d + 
-                               anemia_hist_d + 
+                              # anemia_hist_d + 
                               # high_hb_hist_d + 
                                iron_supp_d + 
                                sleep_night_d + 
@@ -171,12 +190,12 @@ logit_post_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff 
                                ment_inf_d + 
                                freq_alc_d +
                                life_qual +
-                               education + 
-                               employment +
-                               smoking_behavior
+                             #  education + 
+                               employment 
+                             #  smoking_behavior
                              ,
                              data=regression_data_post_menop_women,
-                            family="binomial")
+                            family="binomial", separation = 'test')
  
  summary(logit_post_menop_women)
 ```
@@ -190,13 +209,19 @@ plot(logit_post_menop_women)
 ```{r}
 vif(logit_post_menop_women)
 ```
+High VIF values indicate that for post menopausal women the analysis is not reliable as there is much colinearity.
+
+```{r}
+logistic.display(logit_post_menop_women)
+```
 
 ```{r}
 tidy_logit_post_menop_women <-
   logit_post_menop_women %>% 
   tidy %>% 
   mutate(OR = exp(estimate),
-         group = "Post_menopause_women")
+         group = "Post_menopause_women") %>% mutate(p.value = p.value * 2)
+#p-values are multiplied by 2 as we will make also second analysis for improved health with the same data set.
 ```
 
 
@@ -217,7 +242,7 @@ logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                blood_sugar_d + 
                                HBP_d + 
                                low_hb_hist_d + 
-                               anemia_hist_d + 
+                              # anemia_hist_d + 
                               # high_hb_hist_d + 
                                iron_supp_d + 
                                sleep_night_d + 
@@ -242,12 +267,12 @@ logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                ment_inf_d + 
                                freq_alc_d +
                               life_qual +
-                               education + 
-                               employment +
-                              smoking_behavior
+                            #   education + 
+                               employment 
+                             # smoking_behavior
                              ,
                              data=regression_data_men,
-                            family="binomial")
+                            family="binomial", separation = 'test')
  
  summary(logit_men)
 ```
@@ -263,10 +288,176 @@ vif(logit_men)
 ```
 
 ```{r}
+logistic.display(logit_men)
+```
+
+
+```{r}
 tidy_logit_men <-
   logit_men %>% 
   tidy %>% 
   mutate(OR = exp(estimate),
-         group = "Men")
+         group = "Men") %>% mutate(p.value = p.value * 2)
+#p-values are multiplied by 2 as we will make also second analysis for improved health with the same data set.
 ```
 
+
+# Bootstraps
+```{r}
+
+# https://www.painblogr.org/2017-10-18-purrring-through-bootstraps.html
+
+
+get_coefficients <- function(data, boot_ind){
+  fit <- glm (health_outcome~.,
+              data[boot_ind,],
+              family = "binomial")
+  return(coef(fit))
+}
+
+
+
+compute_Bca_CI <-function(fit_boot){
+  Bca_inf = rep(0, length(fit_boot$t0))
+  Bca_sup = rep(0, length(fit_boot$t0))
+  for (i_regressor in 1:length(fit_boot$t0)){
+    CI <- boot.ci(fit_boot, type = "bca", index=i_regressor)
+    Bca_inf[i_regressor] <- CI$bca[4]
+    Bca_sup[i_regressor] <- CI$bca[5]
+  }
+  return(tibble(Bca_inf,Bca_sup, regressor = names(fit_boot$t0)) %>% 
+           filter(regressor != "(Intercept)"))
+}
+
+
+get_bootstrap <- function(data, nb_boot){
+ 
+ 
+
+    fit_boot <- boot(data, statistic= get_coefficients, R = nb_boot)
+
+
+  fit_boot_distrib <- as.tibble(fit_boot$t)  
+  names(fit_boot_distrib) <- names(fit_boot$t0)
+
+  fit_boot_Bca <- compute_Bca_CI(fit_boot)
+  
+  return(list(fit_boot_distrib,fit_boot_Bca))
+}
+
+
+
+
+get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
+{
+
+  ## preprocess and standardize data
+
+  
+    test_data_std <- regression_data %>% 
+      filter(group == current_group) %>% 
+      dplyr::select(donor, 
+                    age, 
+                    starting_weight, 
+                    BMI_diff,
+                    log_Ferritin_beginning, 
+                    Hb_beginning, 
+                    donation_frequency,
+                   sleep_night_d 
+                    ) %>% 
+      gather(key = key, value = value, -donor) %>% 
+      group_by(key) %>% 
+      mutate(value_scale = scale(value, scale = FALSE)[,1]) %>% 
+      dplyr::select(-value) %>% 
+      spread(key = key, value = value_scale) %>% 
+      inner_join(regression_data %>% 
+                   dplyr::select(donor, 
+                                 health_outcome, 
+                                 health_very_good, 
+                                 health_excellent,
+                                cholesterol_d, 
+                               blood_sugar_d, 
+                               HBP_d, 
+                               low_hb_hist_d, 
+                               iron_supp_d, 
+                               freq_calm_d, 
+                               freq_red_meat_d, 
+                               freq_fruits_d, 
+                               freq_juices_d, 
+                               freq_wholem_d, 
+                               freq_milk_d, 
+                               freq_cof_d, 
+                               freq_tea_d, 
+                               phys_cond_d, 
+                               act_heavy_d, 
+                               sleep_enough_d, 
+                               day_act_d, 
+                               h_act_light_d, 
+                               vita_multi_d, 
+                               vita_iron_d, 
+                               sleep_tired_d, 
+                               anti_inf_d, 
+                               phys_inf_d, 
+                               ment_inf_d, 
+                               freq_alc_d,
+                              life_qual,
+                               employment 
+
+                                 ),
+                 by = "donor") %>% 
+    dplyr::select(-donor) 
+
+  
+  
+  result <- test_data_std %>% 
+  get_bootstrap(nb_boot = nb_boot)
+
+
+  bootstrap_distrib <- result[[1]] %>% 
+    gather(key = regressor, value = coefficient) %>% 
+    filter(regressor != "(Intercept)") %>% 
+    mutate(group = current_group)
+    
+  Bca_CI  <- result[[2]] %>% mutate(group = current_group)
+
+  return(list(bootstrap_distrib,Bca_CI))
+}
+
+
+output_file_distrib = ("../results/bootstraps/exp_coeff_boot_distrib_seed_125_ctr_strata_final.rdata")
+output_file_Bca = ("../results/bootstraps/exp_coeff_boot_Bca_seed_125_ctr_strata_final.rdata")
+
+
+#get_from_file_ferr = TRUE
+
+get_from_file_ferr <- all(file.exists(output_file_distrib),file.exists(output_file_Bca) )
+
+set.seed(125)
+group_str = "Pre_menopause_women"
+
+if (get_from_file_ferr){
+  load(file=output_file_distrib)
+  load(file=output_file_Bca)
+}else
+{
+   for(group_str in c("Pre_menopause_women", "Post_menopause_women","Men")){
+    
+    stuff <- get_bootstrap_coeffs(regression_data, group_str, nb_boot = 10000)
+    
+    if(!exists("bootstrap_distrib")){
+      bootstrap_distrib <- stuff[[1]]
+      bootstrap_Bca_CI <- stuff[[2]]
+    }else
+    {
+      bootstrap_distrib<-bind_rows(bootstrap_distrib, stuff[[1]])
+      bootstrap_Bca_CI<-bind_rows(bootstrap_Bca_CI, stuff[[2]])
+    }
+  } 
+  save(bootstrap_distrib,file=output_file_distrib) 
+  save(bootstrap_Bca_CI,file=output_file_Bca)
+}
+
+
+
+
+```

@@ -801,9 +801,9 @@ Also some grouping would be good in here.
 
 ```{r}
 changedata <- changedata %>% mutate(education = case_when(
-  education == "graduate_degree" | education == "bachelor_degree"  ~ "university",
-  education == "vocational_school" | education == "trade-school" |  education == "vocational_college" |  education == "high-school"  ~ "vocational",
-  education == "basic_education" | education == "middle-school"  ~ "basic"
+  education == "trade-school" |  education == "vocational_college" |  education == "graduate_degree" | education == "bachelor_degree"   ~ "high",
+  education == "vocational_school" |  education == "high-school"  ~ "middle",
+  education == "basic_education" | education == "middle-school"  ~ "lower"
   
   )) %>% mutate(education = factor(education))
 ```
