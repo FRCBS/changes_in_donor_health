@@ -175,6 +175,11 @@ regression_data <-
 
   
 regression_data$smoking_behavior <- factor(regression_data$smoking_behavior)
+
+file <- "../results/hypregdata_unscaled.rdata"
+save(regression_data,file=file)
+
+
 ```
 
 
