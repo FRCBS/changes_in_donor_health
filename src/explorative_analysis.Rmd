@@ -5,6 +5,7 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
+TARKISTA, ETTÄ KAIKKI JOTKA ON KUSSAKIN MALLISSA ON YRITETTY BOOTISSA
 
 
 ```{r setup, include=FALSE}
@@ -95,12 +96,12 @@ For sake of completnes  all these variables are removed from all the models. Non
 logit_pre_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
                                log_Ferritin_beginning + Hb_beginning +
                               donation_frequency + health_very_good + health_excellent +
-                             cholesterol_d + 
-                             blood_sugar_d + 
+                              cholesterol_d + 
+                              blood_sugar_d + 
                                HBP_d + 
-                               low_hb_hist_d + 
-                             #  anemia_hist_d + 
-                              # high_hb_hist_d + 
+                                low_hb_hist_d + 
+                               anemia_hist_d + 
+#                               high_hb_hist_d + # The following terms are causing separation among the sample points: high_hb_hist_dTRUE
                                iron_supp_d + 
                                sleep_night_d + 
                                freq_calm_d + 
@@ -123,10 +124,10 @@ logit_pre_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                phys_inf_d + 
                                ment_inf_d + 
                                freq_alc_d +
-                            #   life_qual +
-                             #  education + 
-                               employment 
-                            # smoking_behavior
+                               life_qual +
+                               education  +  
+                               employment + 
+                             smoking_behavior  
                              ,
                              data=regression_data_pre_menop_women,
                             family="binomial", separation = 'test')
@@ -171,12 +172,12 @@ There are no cases who aquired high Hb during the research period. high_hb_hist_
 logit_post_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
                                log_Ferritin_beginning + Hb_beginning +
                               donation_frequency + health_very_good + health_excellent +
-                             cholesterol_d + 
-                              blood_sugar_d + 
+                               cholesterol_d + 
+                              # blood_sugar_d + # Separation exists among the sample points.
                                HBP_d + 
                                low_hb_hist_d + 
-                              # anemia_hist_d + 
-                              # high_hb_hist_d + 
+                              anemia_hist_d + 
+                               high_hb_hist_d + 
                                iron_supp_d + 
                                sleep_night_d + 
                                freq_calm_d + 
@@ -193,16 +194,16 @@ logit_post_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff 
                                day_act_d + 
                                h_act_light_d + 
                                vita_multi_d + 
-                               vita_iron_d + 
+                               #vita_iron_d + #eparation exists among the sample points.
                                sleep_tired_d + 
                                anti_inf_d + 
                                phys_inf_d + 
                                ment_inf_d + 
                                freq_alc_d +
-                             #  life_qual +
-                             #  education + 
-                               employment 
-                             #  smoking_behavior
+                               life_qual +
+                               education + 
+                               employment +
+                               smoking_behavior
                              ,
                              data=regression_data_post_menop_women,
                             family="binomial", separation = 'test')
@@ -252,8 +253,8 @@ logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                blood_sugar_d + 
                                HBP_d + 
                                low_hb_hist_d + 
-                              # anemia_hist_d + 
-                              # high_hb_hist_d + 
+                              # anemia_hist_d + # eparation exists among the sample points.
+                               high_hb_hist_d + 
                                iron_supp_d + 
                                sleep_night_d + 
                                freq_calm_d + 
@@ -276,10 +277,10 @@ logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                phys_inf_d + 
                                ment_inf_d + 
                                freq_alc_d +
-                             # life_qual +
-                            #   education + 
-                               employment 
-                             # smoking_behavior
+                               life_qual +
+                               education + 
+                               employment +
+                              smoking_behavior
                              ,
                              data=regression_data_men,
                           #    data=test_data_std,
@@ -287,38 +288,6 @@ logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff +
  
  summary(logit_men)
  
- 
- 
-regvars<-  c('age', 'starting_weight', 'BMI_diff', 'log_Ferritin_beginning' , 'Hb_beginning' ,
-                              'donation_frequency' ,'health_outcome', 'health_very_good' , 'health_excellent' ,
-                             'cholesterol_d' , 
-                               'blood_sugar_d' , 
-                               'HBP_d' , 
-                               'low_hb_hist_d' , 
-                               'iron_supp_d' , 
-                               'sleep_night_d' , 
-                               'freq_calm_d' , 
-                               'freq_red_meat_d' , 
-                               'freq_fruits_d' , 
-                               'freq_juices_d' , 
-                               'freq_wholem_d' , 
-                               'freq_milk_d' , 
-                               'freq_cof_d' , 
-                               'freq_tea_d' , 
-                               'phys_cond_d' , 
-                               'act_heavy_d' , 
-                               'sleep_enough_d' , 
-                               'day_act_d' , 
-                               'h_act_light_d' , 
-                               'vita_multi_d' , 
-                               'vita_iron_d' , 
-                               'sleep_tired_d' , 
-                               'anti_inf_d' , 
-                               'phys_inf_d' , 
-                               'ment_inf_d' , 
-                               'freq_alc_d' ,
-                              'life_qual' ,
-                               'employment')
  
 ```
 
@@ -348,8 +317,15 @@ tidy_logit_men <-
 
 
 # Bootstraps
+
 ```{r}
 detach("package:safeBinaryRegression", unload=TRUE)
+#safeBinaryRegression messes up booting
+```
+
+## Define auxiliarry functions for bootstrapping
+```{r}
+
 # https://www.painblogr.org/2017-10-18-purrring-through-bootstraps.html
 
 
@@ -392,13 +368,19 @@ get_bootstrap <- function(data, nb_boot){
 }
 
 
+```
+
+## Run bootstrapping
+```{r}
+# Error in t.star[r, ] <- res[[r]] : 
+#   number of items to replace is not a multiple of replacement length
+#can sometimes be fixed by just adding bootstrap, but sometimes requires dropping out a variable
 
 
 get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
 {
 
   ## preprocess and standardize data
-
   
     test_data_std <- regression_data %>% 
       filter(group == current_group) %>% 
@@ -409,42 +391,115 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
       group_by(key) %>% 
       mutate(value_scale = scale(value, scale = FALSE)[,1]) %>% 
       dplyr::select(-value) %>% 
-      spread(key = key, value = value_scale) %>% 
-      inner_join(regression_data %>% 
-                   dplyr::select(donor, health_outcome, health_very_good, health_excellent,
-                                                                 cholesterol_d, 
-                               blood_sugar_d,
-                               HBP_d,
-                               low_hb_hist_d,
-                               iron_supp_d,
-                               freq_calm_d,
-                               freq_red_meat_d,
-                               freq_fruits_d,
-                               freq_juices_d,
-                               freq_wholem_d,
-                               freq_milk_d,
-                               freq_cof_d,
-                               freq_tea_d,
-                               phys_cond_d,
-                               act_heavy_d,
-                               sleep_enough_d,
-                               day_act_d,
-                               h_act_light_d,
-                               vita_multi_d,
-                               vita_iron_d,
-                               sleep_tired_d,
-                               anti_inf_d,
-                               phys_inf_d,
-                               ment_inf_d,
-                               freq_alc_d,
-                           #   life_qual,
-                               employment
-
-                                 ),
-                 by = "donor") %>% 
-    dplyr::select(-donor) 
-
-  
+      spread(key = key, value = value_scale) 
+     
+    if (current_group == "Men") {
+      test_data_std <- inner_join(test_data_std,regression_data %>% 
+                                    dplyr::select(donor, health_outcome, health_very_good, health_excellent,
+                                                  cholesterol_d,
+                                                  blood_sugar_d,
+                                                  HBP_d,
+                                                  low_hb_hist_d,
+                                                  iron_supp_d,
+                                                  freq_calm_d,
+                                                  freq_red_meat_d,
+                                                  freq_fruits_d,
+                                                  freq_juices_d,
+                                                  freq_wholem_d,
+                                                  freq_milk_d,
+                                                  freq_cof_d,
+                                                  freq_tea_d,
+                                                  phys_cond_d,
+                                                  act_heavy_d,
+                                                  sleep_enough_d,
+                                                  day_act_d,
+                                                  h_act_light_d,
+                                                  vita_multi_d,
+                                                  vita_iron_d,
+                                                  sleep_tired_d,
+                                                  anti_inf_d,
+                                                  phys_inf_d,
+                                                  ment_inf_d,
+                                                  freq_alc_d,
+                                                  life_qual,
+                                                  employment
+                                                  
+                                    ),
+                                  by = "donor") %>% 
+        dplyr::select(-donor) 
+    }
+    
+    if (current_group == "Pre_menopause_women") {
+      test_data_std <- inner_join(test_data_std,regression_data %>% 
+                                    dplyr::select(donor, health_outcome, health_very_good, health_excellent,
+                                                  cholesterol_d,
+                                                  blood_sugar_d,
+                                                  HBP_d,
+                                                  low_hb_hist_d,
+                                                  iron_supp_d,
+                                                  freq_calm_d,
+                                                  freq_red_meat_d,
+                                                  freq_fruits_d,
+                                                  freq_juices_d,
+                                                  freq_wholem_d,
+                                                  freq_milk_d,
+                                                  freq_cof_d,
+                                                  freq_tea_d,
+                                                  phys_cond_d,
+                                                  act_heavy_d,
+                                                  sleep_enough_d,
+                                                  day_act_d,
+                                                  h_act_light_d,
+                                                  vita_multi_d,
+                                                  #vita_iron_d, #Error in t.star[r, ] <- res[[r]]
+                                                  sleep_tired_d,
+                                                  anti_inf_d,
+                                                  phys_inf_d,
+                                                  ment_inf_d,
+                                                  freq_alc_d,
+                                                  life_qual,
+                                                  employment
+                                                  
+                                    ),
+                                  by = "donor") %>% 
+        dplyr::select(-donor) 
+    }
+    
+      if (current_group == "Post_menopause_women") {
+      test_data_std <- inner_join(test_data_std,regression_data %>% 
+                                    dplyr::select(donor, health_outcome, health_very_good, health_excellent,
+                                                 cholesterol_d,
+                                                 blood_sugar_d,
+                                                  HBP_d,
+                                                  low_hb_hist_d,
+                                                  iron_supp_d,
+                                                  freq_calm_d,
+                                                  freq_red_meat_d,
+                                                  freq_fruits_d,
+                                                  freq_juices_d,
+                                                  freq_wholem_d,
+                                                  freq_milk_d,
+                                                  freq_cof_d,
+                                                  freq_tea_d,
+                                                  phys_cond_d,
+                                                  act_heavy_d,
+                                                  sleep_enough_d,
+                                                  day_act_d,
+                                                  h_act_light_d,
+                                                  vita_multi_d,
+                                                  #vita_iron_d #Error in t.star[r, ] <- res[[r]]
+                                                  sleep_tired_d,
+                                                  anti_inf_d,
+                                                  phys_inf_d,
+                                                  # ment_inf_d # Error in t.star[r, ] <- res[[r]]
+                                                  freq_alc_d,
+                                                  life_qual, # Error in bca.ci(boot.out, conf, index[1L], L = L, t = t.o, t0 = t0.o,  : estimated adjustment 'w' is infinite -> works if 10k boots.
+                                                  employment
+                                                  
+                                    ),
+                                  by = "donor") %>% 
+        dplyr::select(-donor) 
+    }
   cat(nrow(test_data_std),current_group,"get_bootstrap_coeffs 1\n")
   result <- test_data_std %>% 
   get_bootstrap(nb_boot = nb_boot)
@@ -461,47 +516,178 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
 }
 
 
-output_file_distrib = ("../results/bootstraps/exp_coeff_boot_distrib_seed_125_ctr_strata_final.rdata")
-output_file_Bca = ("../results/bootstraps/exp_coeff_boot_Bca_seed_125_ctr_strata_final.rdata")
 
 
 #get_from_file_ferr = TRUE
 
-get_from_file_ferr <- all(file.exists(output_file_distrib),file.exists(output_file_Bca) )
+
 
 set.seed(125)
 #group_str = "Pre_menopause_women"
 
-if (get_from_file_ferr){
-  load(file=output_file_distrib)
-  load(file=output_file_Bca)
-}else
-{
-   for(group_str in c("Pre_menopause_women", "Post_menopause_women","Men")){
+for(group_str in c("Pre_menopause_women", "Post_menopause_women","Men")){
 #  for(group_str in c("Pre_menopause_women","Men")) {
+#for(group_str in c("Post_menopause_women","Pre_menopause_women")){
+  output_file_distrib = paste0("../results/bootstraps/exp_coeff_boot_distrib_seed_125_ctr_strata_final_",group_str,".rdata")
+  output_file_Bca = paste0("../results/bootstraps/exp_coeff_boot_Bca_seed_125_ctr_strata_final_",group_str,".rdata")
+  get_from_file_ferr <- all(file.exists(output_file_distrib),file.exists(output_file_Bca) )
+  if (get_from_file_ferr){
+    cat("Loading boots from file for group ",group_str,"\n")
+    stuff <- list()
+    load(file=output_file_distrib)
+    load(file=output_file_Bca)
+    stuff[[1]] <- temp1  
+    stuff[[2]] <- temp2
     
-    stuff <- get_bootstrap_coeffs(regression_data, group_str, nb_boot = 10000)
-#         stuff <- get_bootstrap_coeffs(regression_data, group_str, nb_boot = 1000)
-    
-    if(!exists("bootstrap_distrib")){
-      bootstrap_distrib <- stuff[[1]]
-      bootstrap_Bca_CI <- stuff[[2]]
-    }else
-    {
-      bootstrap_distrib<-bind_rows(bootstrap_distrib, stuff[[1]])
-      bootstrap_Bca_CI<-bind_rows(bootstrap_Bca_CI, stuff[[2]])
-    }
-  } 
-  save(bootstrap_distrib,file=output_file_distrib) 
-  save(bootstrap_Bca_CI,file=output_file_Bca)
+  }else {
+    stuff <- get_bootstrap_coeffs(regression_data, group_str, nb_boot = 1000)
+    #         stuff <- get_bootstrap_coeffs(regression_data, group_str, nb_boot = 1000)
+    temp1 <- stuff[[1]] 
+    temp2 <- stuff[[2]] 
+    save(temp1,file=output_file_distrib) 
+    save(temp2,file=output_file_Bca)
+  }
+  
+  if(!exists("bootstrap_distrib")){
+    cat("initializing bootstrap_distrib & bootstrap_Bca_CI\n")
+
+    bootstrap_distrib <- stuff[[1]]
+    bootstrap_Bca_CI <- stuff[[2]]
+  }else
+  {
+    cat("bootstrap_distrib & bootstrap_Bca_CI already exist\n")
+    bootstrap_distrib<-bind_rows(bootstrap_distrib, stuff[[1]])
+    bootstrap_Bca_CI<-bind_rows(bootstrap_Bca_CI, stuff[[2]])
+  }
+  
 }
-
-
 
 
 ```
 
+```{r}
+bootstrap_Bca_CI %>%  group_by(group) %>% count()
 
+```
+
+# Forest plots
+
+```{r}
+# "\U0394 BMI"
+
+regressor_values <- c(
+ "age" = "Age",
+   "BMI_diff" = "BMI difference",
+   "donation_frequency" = "Donation frequency",
+   "Hb_beginning" = "Initial Hemoglobin",
+   "log_Ferritin_beginning" ="Initial Ferritin",
+   "starting_weight" ="Initial weight",
+   "health_very_good" ="Initial health rating \n Very good vs Satisfactory/Good",
+    "health_excellent" = "Initial health rating \n Excellent vs Satisfactory/Good"
+)
+```
+
+```{r}
+bootstrap_Bca_CI <-
+  tidy_logit_men %>% 
+  bind_rows(tidy_logit_post_menop_women) %>% 
+  bind_rows(tidy_logit_pre_menop_women) %>% 
+  dplyr::select(group, term, OR, p.value) %>% 
+  rename(regressor = term) %>% 
+  full_join(bootstrap_Bca_CI,
+            by =  c("regressor", "group")) %>% 
+  filter(regressor != "(Intercept)") %>% 
+  mutate(Bca_inf = exp(Bca_inf),
+         Bca_sup = exp(Bca_sup),
+         is_sig = p.value < 0.05)
+# %>% 
+#   mutate(regressor = plyr::revalue(regressor, regressor_values),
+#     regressor = ordered(regressor,
+#                     levels =  c("Age", "Initial weight", "BMI difference",  "Initial Hemoglobin", 
+#                                 "Initial Ferritin","Donation frequency",
+#                                "Initial health rating \n Very good vs Satisfactory/Good",
+#                                "Initial health rating \n Excellent vs Satisfactory/Good")),
+#     regressor = fct_rev(regressor),
+#     group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal women",
+#       group == "Post_menopause_women" ~ "Post-menopausal women",
+#       TRUE ~ "Men"),
+#     group = ordered(group, levels = c(  "Pre-menopausal women",  "Post-menopausal women", "Men"  ) ))
+
+
+```
+
+```{r}
+
+# "\U0394 BMI"
+bootstrap_distrib %>% 
+  mutate(regressor = plyr::revalue(regressor, regressor_values),
+  regressor = ordered(regressor,
+                  levels =  c("Age", "Initial weight", "BMI difference",  "Initial Hemoglobin", 
+                              "Initial Ferritin","Donation frequency",
+                              "Initial health rating \n Very good vs Satisfactory/Good",
+                              "Initial health rating \n Excellent vs Satisfactory/Good")),
+  regressor = fct_rev(regressor),
+  group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal women",
+    group == "Post_menopause_women" ~ "Post-menopausal women",
+    TRUE ~ "Men"),
+  group = ordered(group, levels = c( "Men",  "Post-menopausal women", "Pre-menopausal women" ) )) %>% 
+  mutate(OR = exp(coefficient)) %>% 
+  ggplot(aes(x = regressor, y = OR, color = group, fill = group)) +
+  geom_hline(yintercept = 1 , color = "grey", linetype = "dotted",
+             size = 1) +
+  # geom_violin(alpha = 0.15, trim = TRUE, position = position_dodge(width = 0.8), size = 0.1) +
+  geom_pointrange(data = bootstrap_Bca_CI, 
+                  aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
+                  position = position_dodge(width = 0.7), size = 1) +
+  # geom_point(data = bootstrap_Bca_CI, 
+  #            aes(shape = is_sig, fill = group),
+  #            position = position_dodge(width = 0.8), size = 2) +
+    scale_color_manual(values = c(  "#0065BD", "#BA0303", "#C50084" ),
+                     limits = c("Men",  "Post-menopausal women","Pre-menopausal women" )) +
+     scale_fill_manual(values = c(  "#0065BD", "#BA0303", "#C50084" ),
+                     limits = c("Men",  "Post-menopausal women","Pre-menopausal women" )) +
+ scale_shape_manual(values = c(1,16)) +
+  scale_y_log10(limits=c(1/40,40)) +
+  # scale_x_discrete(labels=parse(text=unique(bootstrap_Bca_CI$regressor)))
+  # ylim(1/35, 35) +
+  guides(shape = FALSE) +
+  theme_classic() +
+  # theme(legend.position = c(0.8,0.9),
+  #       legend.title = element_blank(),
+  #       legend.box = "vertical",
+  #       legend.text = element_text(size = 20),
+  #       plot.title =  element_text(size = 24,
+  #                                 hjust = 0),
+  #       panel.grid.minor.y = element_blank(),
+  #       axis.line = element_line(colour="black"),
+  #       axis.title.y = element_blank(),
+  #       axis.title.x = element_text(size = 24),
+  #       axis.text = element_text(size = 22),
+  #       panel.grid.major.y = element_blank()) +
+  coord_flip() +
+  xlab("Robust standardized coefficient") +
+  labs(title = "PREDICTORS OF WORSENED SELF-RATED HEALTH \nBETWEEN QUESTIONNAIRES",
+       subtitle = "") +
+
+
+   theme(axis.title = element_text(size = 14),
+        strip.text =  element_text(size = 14),
+        legend.text = element_text(size = 12),
+        strip.background = element_rect(fill = "white"),
+        strip.background.x = element_blank(),
+        axis.text.y = element_text(size = 14),
+        axis.text.x = element_text(size = 14, angle = 30,hjust = 0.8),
+        plot.title =  element_text(size = 16),
+        plot.subtitle = element_text(size = 16,
+                                     hjust = 0.5))
+   #
+ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.png",
+       width = 35,
+       height = 18,
+       dpi = "print",
+       units = "cm")
+
+```
 
 
 
