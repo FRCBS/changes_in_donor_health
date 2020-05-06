@@ -5,8 +5,11 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
-TARKISTA, ETTÄ KAIKKI JOTKA ON KUSSAKIN MALLISSA ON YRITETTY BOOTISSA
-
+-poista malleista ne jotka ei boottaa
+-sitten kuvasta siisti:
+  -inf arvot
+  -iso kuva supplementtiin
+  -pikku kuva julkaisuun (p-arvo suodatus?)
 
 ```{r setup, include=FALSE}
 Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
@@ -177,7 +180,7 @@ logit_post_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff 
                                HBP_d + 
                                low_hb_hist_d + 
                               anemia_hist_d + 
-                               high_hb_hist_d + 
+                               # high_hb_hist_d + # no postive cases 
                                iron_supp_d + 
                                sleep_night_d + 
                                freq_calm_d + 
@@ -202,8 +205,8 @@ logit_post_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff 
                                freq_alc_d +
                                life_qual +
                                education + 
-                               employment +
-                               smoking_behavior
+                               employment 
+                               #smoking_behavior
                              ,
                              data=regression_data_post_menop_women,
                             family="binomial", separation = 'test')
@@ -313,6 +316,10 @@ tidy_logit_men <-
   mutate(OR = exp(estimate),
          group = "Men") %>% mutate(p.value = p.value * 2)
 #p-values are multiplied by 2 as we will make also second analysis for improved health with the same data set.
+
+#https://data.princeton.edu/wws509/r/c3s1
+#https://stats.stackexchange.com/questions/304833/how-to-calculate-odds-ratio-and-95-confidence-interval-for-logistic-regression
+#https://www.andrewheiss.com/blog/2016/04/25/convert-logistic-regression-standard-errors-to-odds-ratios-with-r/
 ```
 
 
@@ -396,6 +403,7 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
     if (current_group == "Men") {
       test_data_std <- inner_join(test_data_std,regression_data %>% 
                                     dplyr::select(donor, health_outcome, health_very_good, health_excellent,
+                                                #  sleep_night_d, ##Error in t.star[r, ] <- res[[r]] :
                                                   cholesterol_d,
                                                   blood_sugar_d,
                                                   HBP_d,
@@ -419,10 +427,12 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
                                                   sleep_tired_d,
                                                   anti_inf_d,
                                                   phys_inf_d,
-                                                  ment_inf_d,
+                                                #  ment_inf_d,
                                                   freq_alc_d,
                                                   life_qual,
                                                   employment
+                                                #  education # Error in t.star[r, ] <- res[[r]] : 
+                                                # smoking_behavior #Error in t.star[r, ] <- res[[r]] :
                                                   
                                     ),
                                   by = "donor") %>% 
@@ -432,6 +442,7 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
     if (current_group == "Pre_menopause_women") {
       test_data_std <- inner_join(test_data_std,regression_data %>% 
                                     dplyr::select(donor, health_outcome, health_very_good, health_excellent,
+                                                #  sleep_night_d, #Error in t.star[r, ] <- res[[r]] :
                                                   cholesterol_d,
                                                   blood_sugar_d,
                                                   HBP_d,
@@ -455,10 +466,12 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
                                                   sleep_tired_d,
                                                   anti_inf_d,
                                                   phys_inf_d,
-                                                  ment_inf_d,
+                                                  # ment_inf_d,
                                                   freq_alc_d,
                                                   life_qual,
                                                   employment
+                                                #  education #Error in t.star[r, ] <- res[[r]] : 
+                                               #   smoking_behavior # Error in t.star[r, ] <- res[[r]] : 
                                                   
                                     ),
                                   by = "donor") %>% 
@@ -468,6 +481,7 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
       if (current_group == "Post_menopause_women") {
       test_data_std <- inner_join(test_data_std,regression_data %>% 
                                     dplyr::select(donor, health_outcome, health_very_good, health_excellent,
+                                                #  sleep_night_d, #Error in t.star[r, ] <- res[[r]] :
                                                  cholesterol_d,
                                                  blood_sugar_d,
                                                   HBP_d,
@@ -495,6 +509,8 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
                                                   freq_alc_d,
                                                   life_qual, # Error in bca.ci(boot.out, conf, index[1L], L = L, t = t.o, t0 = t0.o,  : estimated adjustment 'w' is infinite -> works if 10k boots.
                                                   employment
+                                                #  education # Error in bca.ci(boot.out, conf, index[1L], L = L, t = t.o, t0 = t0.o,  :
+                                                #  smoking_behavior # Error in t.star[r, ] <- res[[r]]
                                                   
                                     ),
                                   by = "donor") %>% 
@@ -525,8 +541,8 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
 set.seed(125)
 #group_str = "Pre_menopause_women"
 
-for(group_str in c("Pre_menopause_women", "Post_menopause_women","Men")){
-#  for(group_str in c("Pre_menopause_women","Men")) {
+for(group_str in c("Pre_menopause_women","Men","Post_menopause_women")){
+#  for(group_str in c("Pre_menopause_women")) {
 #for(group_str in c("Post_menopause_women","Pre_menopause_women")){
   output_file_distrib = paste0("../results/bootstraps/exp_coeff_boot_distrib_seed_125_ctr_strata_final_",group_str,".rdata")
   output_file_Bca = paste0("../results/bootstraps/exp_coeff_boot_Bca_seed_125_ctr_strata_final_",group_str,".rdata")
@@ -540,7 +556,7 @@ for(group_str in c("Pre_menopause_women", "Post_menopause_women","Men")){
     stuff[[2]] <- temp2
     
   }else {
-    stuff <- get_bootstrap_coeffs(regression_data, group_str, nb_boot = 1000)
+    stuff <- get_bootstrap_coeffs(regression_data, group_str, nb_boot = 10000)
     #         stuff <- get_bootstrap_coeffs(regression_data, group_str, nb_boot = 1000)
     temp1 <- stuff[[1]] 
     temp2 <- stuff[[2]] 
@@ -583,49 +599,98 @@ regressor_values <- c(
    "log_Ferritin_beginning" ="Initial Ferritin",
    "starting_weight" ="Initial weight",
    "health_very_good" ="Initial health rating \n Very good vs Satisfactory/Good",
-    "health_excellent" = "Initial health rating \n Excellent vs Satisfactory/Good"
+    "health_excellent" = "Initial health rating \n Excellent vs Satisfactory/Good",
+ "cholesterol_dTRUE" = "Elevated cholesterol detected",
+"blood_sugar_dTRUE" = "Elevated blood sugar detected", 
+"HBP_dTRUE" = "High blood pressure detected",
+"low_hb_hist_dTRUE" = "Low haemoglobin detected",
+"iron_supp_dStable" = "FRCBS iron supplementation stable", 
+"iron_supp_dIncreased" = "FRCBS iron supplementation increased",
+"vita_multi_dStable" = "Frequency multivitamine stable",
+"vita_multi_dIncreased" = "Frequency multivitamine increased",
+"vita_iron_dStable" = "Frequency iron supplements stable",
+"vita_iron_dIncreased" = "Frequency iron supplements increased",
+"anti_inf_dStable" = "Frequency of anti-inflammatory stable",
+"anti_inf_dIncreased" = "Frequency of anti-inflammatory increased",
+"freq_red_meat_dStable" = "Frequency of red meat stable",
+"freq_red_meat_dIncreased" = "Frequency of red meat increased",
+"freq_fruits_dStable" = "Frequency of fruits stable",
+"freq_fruits_dIncreased" = "Frequency of fruits increased",
+"freq_juices_dStable" = "Frequency of juices stable",
+"freq_juices_dIncreased" = "Frequency of juices increased",
+"freq_wholem_dStable" = "Frequency of whole milk stable",
+"freq_wholem_dIncreased" = "Frequency of whole milk increased",
+"freq_milk_dStable" = "Frequency of milk stable",
+"freq_milk_dIncreased" = "Frequency of milk increased",
+"freq_cof_dStable" = "Frequency of coffee stable",
+"freq_cof_dIncreased"  = "Frequency of coffee increased",
+"freq_tea_dStable" = "Frequency of tea stable",
+"freq_tea_dIncreased" = "Frequency of tea increased",
+"freq_alc_dStable" = "Frequency of alcohol stable",
+"freq_alc_dIncreased" = "Frequency of alcohol increased",
+"phys_inf_dStable" = "Physical symptoms inferred stable",
+"phys_inf_dIncreased" = "Physical symptoms inferred increased",
+"phys_cond_dStable" = "Physical condition stable",
+"phys_cond_dIncreased" = "Physical condition increased",
+"act_heavy_dStable" = "Ability for heavy activity stable",
+"act_heavy_dIncreased" = "Ability for heavy activity increased",
+"day_act_dStable"  = "Typical day activity stable",
+"day_act_dIncreased" = "Typical day activity increased",
+"h_act_light_dStable"  = "Hours for light activity stable",
+"h_act_light_dIncreased"  = "Hours for light activity increased",
+"sleep_enough_dStable" = "Enough sleep stable",
+"sleep_enough_dIncreased"  = "Enough sleep increased",
+"sleep_tired_dStable" = "Tired during day stable",
+"sleep_tired_dIncreased" = "Tired during day increased",
+"freq_calm_dStable" = "Frequency of feeling calm stable",
+"freq_calm_dIncreased" =  "Frequency of feeling calm increase",
+"life_qualgood" = "Life quality good",
+"life_qualvery_good" = "Life quality excellent",
+"employmentTRUE" = "Full time employed"
 )
 ```
 
+
+
 ```{r}
-bootstrap_Bca_CI <-
+temp <-
   tidy_logit_men %>% 
   bind_rows(tidy_logit_post_menop_women) %>% 
   bind_rows(tidy_logit_pre_menop_women) %>% 
   dplyr::select(group, term, OR, p.value) %>% 
   rename(regressor = term) %>% 
-  full_join(bootstrap_Bca_CI,
-            by =  c("regressor", "group")) %>% 
+  inner_join(bootstrap_Bca_CI,
+             by =  c("regressor", "group")) %>% 
   filter(regressor != "(Intercept)") %>% 
   mutate(Bca_inf = exp(Bca_inf),
          Bca_sup = exp(Bca_sup),
-         is_sig = p.value < 0.05)
-# %>% 
-#   mutate(regressor = plyr::revalue(regressor, regressor_values),
-#     regressor = ordered(regressor,
-#                     levels =  c("Age", "Initial weight", "BMI difference",  "Initial Hemoglobin", 
-#                                 "Initial Ferritin","Donation frequency",
-#                                "Initial health rating \n Very good vs Satisfactory/Good",
-#                                "Initial health rating \n Excellent vs Satisfactory/Good")),
-#     regressor = fct_rev(regressor),
-#     group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal women",
-#       group == "Post_menopause_women" ~ "Post-menopausal women",
-#       TRUE ~ "Men"),
-#     group = ordered(group, levels = c(  "Pre-menopausal women",  "Post-menopausal women", "Men"  ) ))
+         is_sig = p.value < 0.05) %>%
+  mutate(
+    regressor = plyr::revalue(regressor, regressor_values),
+    regressor = ordered(regressor,
+                        levels =  as.character(regressor_values)),
+    regressor = fct_rev(regressor),
+    group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal women",
+                      group == "Post_menopause_women" ~ "Post-menopausal women",
+                      TRUE ~ "Men"),
+    group = ordered(group, levels = c(  "Pre-menopausal women",  "Post-menopausal women", "Men"  )
+    )
+  )
 
+    
 
 ```
 
+
+
 ```{r}
 
+bootstrap_Bca_CI <- temp
 # "\U0394 BMI"
 bootstrap_distrib %>% 
   mutate(regressor = plyr::revalue(regressor, regressor_values),
   regressor = ordered(regressor,
-                  levels =  c("Age", "Initial weight", "BMI difference",  "Initial Hemoglobin", 
-                              "Initial Ferritin","Donation frequency",
-                              "Initial health rating \n Very good vs Satisfactory/Good",
-                              "Initial health rating \n Excellent vs Satisfactory/Good")),
+                  levels = as.character(regressor_values)),
   regressor = fct_rev(regressor),
   group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal women",
     group == "Post_menopause_women" ~ "Post-menopausal women",
@@ -668,8 +733,6 @@ bootstrap_distrib %>%
   xlab("Robust standardized coefficient") +
   labs(title = "PREDICTORS OF WORSENED SELF-RATED HEALTH \nBETWEEN QUESTIONNAIRES",
        subtitle = "") +
-
-
    theme(axis.title = element_text(size = 14),
         strip.text =  element_text(size = 14),
         legend.text = element_text(size = 12),
@@ -680,12 +743,12 @@ bootstrap_distrib %>%
         plot.title =  element_text(size = 16),
         plot.subtitle = element_text(size = 16,
                                      hjust = 0.5))
-   #
-ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.png",
-       width = 35,
-       height = 18,
-       dpi = "print",
-       units = "cm")
+   
+# ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.png",
+#        width = 35,
+#        height = 18,
+#        dpi = "print",
+#        units = "cm")
 
 ```
 
