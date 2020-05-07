@@ -64,10 +64,11 @@ temp[is.na(temp)] <- "don't know"
 data$accomplish = ordered(temp,
                 levels =  c("yes","don't know", "no"))
 #During the past four weeks, has your mental health interfered with your work or other daily activities?
-temp <- as.character(data$ment_inf)
-temp[is.na(temp)] <- "don't know"
-data$ment_inf = ordered(temp,
-                levels =  c("yes","don't know", "no"))
+##Later in explorative_analysis.Rmd we find out that some variables cannot be fitted. We remove them now not to loose data over them
+# temp <- as.character(data$ment_inf)
+# temp[is.na(temp)] <- "don't know"
+# data$ment_inf = ordered(temp,
+#                 levels =  c("yes","don't know", "no"))
 
 #During the past four weeks, have your physical symptoms (such as pain) or health in general interfered with your work or other daily activities?
 temp <- as.character(data$phys_inf)
@@ -83,7 +84,7 @@ data$phys_inf = ordered(temp,
 
 # How much data do we have
 ```{r}
-#Save questions only asked in the second questionaire
+#Save questions only asked in the second questionaire to be added back later.
 additionalq <- data %>% filter(questionnaire == "Second") %>% dplyr::select(donor, life_qual, education, employment)
 #drop out variables that, 
 # we know from our previous work are too messy: iron_supp_detailed
@@ -91,6 +92,9 @@ additionalq <- data %>% filter(questionnaire == "Second") %>% dplyr::select(dono
 # are conveniency variables: AgeGroup, SixMonthsFromStartCount_FB, TwoYearsFromStartCount_FB
 # is ID: donor
 temp <- data %>% dplyr::select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB,-donor)
+
+#
+
 temp <- na.omit(temp)
 temp %>% group_by(questionnaire) %>% count()
 ```
@@ -416,6 +420,15 @@ Based on the above we have decided to drop: act_light, health_c, vita_C, sleep_2
 
 ```{r}
 temp <- data %>% dplyr::select(-iron_supp_detailed, -life_qual, -education, -employment,-AgeGroup, -SixMonthsFromStartCount_FB,-TwoYearsFromStartCount_FB, -act_light, -health_c, -vita_C, -sleep_24h, -freq_vege, -freq_sports, -freq_spirits, -freq_wine, -freq_beer, -freq_cutlets, -diet, -freq_fish, -freq_eggs, -weight, -height, -accomplish, -freq_energy, -health_soc, -freq_sad,-h_act_none)
+
+#Later in explorative_analysis.Rmd we find out that some variables cannot be fitted. We remove them now not to loose data over them
+temp <- temp %>% dplyr::select(-sleep_night,
+-ment_inf,
+-vita_iron
+#education is removed later as it was only asked in the second questionaire
+#smoking_behavior # this is brought in and removed in
+)
+
 temp <- na.omit(temp)
 temp %>% group_by(questionnaire) %>% count()
 ```
@@ -443,7 +456,7 @@ By excluding several questions that correlate with other questions and have dist
 #Recode answers as change between the questionnaires
 
 Exclude questions that are dealt with later in the regression data processing:
-BMI, smoking, health, date, age, group. "health" has been already excluded.
+BMI, smoking health, date, age, group. "health" has been already excluded. N.B. smoking is not part of the hypothesis testing. It is just processed later.
 ```{r}
 temp <- temp %>% dplyr::select(-BMI,-smoking,-date,-age,-group,-sex)
 #Extract complete data for both questinaires and separate questionaire answers into different columns for processing
@@ -513,7 +526,8 @@ temp <- temp %>% mutate(iron_supp_d = case_when(iron_supp == FALSE & iron_supp_2
 sleep_night recoded as difference
 
 ```{r}
-temp <- temp %>% mutate(sleep_night_d = sleep_night_2 - sleep_night)
+##Later in explorative_analysis.Rmd we find out that some variables cannot be fitted. We remove them now not to loose data over them
+#temp <- temp %>% mutate(sleep_night_d = sleep_night_2 - sleep_night)
 ```
 
 ```{r}
@@ -579,10 +593,11 @@ temp <- temp %>% mutate(freq_tea_d = as.numeric(freq_tea_2)  - as.numeric(freq_t
     TRUE ~ "Stable"
   )) %>% mutate( freq_tea_d= factor(freq_tea_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
 
+#1 is best physical condition, 5 worst, so turn this around to make it more  logical
 temp <- temp %>% mutate(phys_cond_d = as.numeric(phys_cond_2)  - as.numeric(phys_cond)) %>% 
   mutate(phys_cond_d = case_when(
-    phys_cond_d > 0 ~ "Increased",
-    phys_cond_d < 0 ~ "Reduced",
+    phys_cond_d < 0 ~ "Increased",
+    phys_cond_d > 0 ~ "Reduced",
     TRUE ~ "Stable"
   )) %>% mutate( phys_cond_d= factor(phys_cond_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
 
@@ -637,13 +652,14 @@ temp <- temp %>% mutate(vita_multi_d = as.numeric(vita_multi_2)  - as.numeric(vi
     TRUE ~ "Stable"
   )) %>% mutate( vita_multi_d= factor(vita_multi_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
 
+# Later in explorative_analysis.Rmd we find out that some variables cannot be fitted. We remove them now not to loose data over them
 #vita_iron
-temp <- temp %>% mutate(vita_iron_d = as.numeric(vita_iron_2)  - as.numeric(vita_iron)) %>% 
-  mutate(vita_iron_d = case_when(
-    vita_iron_d > 0 ~ "Increased",
-    vita_iron_d < 0 ~ "Reduced",
-    TRUE ~ "Stable"
-  )) %>% mutate( vita_iron_d= factor(vita_iron_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+# temp <- temp %>% mutate(vita_iron_d = as.numeric(vita_iron_2)  - as.numeric(vita_iron)) %>% 
+#   mutate(vita_iron_d = case_when(
+#     vita_iron_d > 0 ~ "Increased",
+#     vita_iron_d < 0 ~ "Reduced",
+#     TRUE ~ "Stable"
+#   )) %>% mutate( vita_iron_d= factor(vita_iron_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
 
 ```
 
@@ -688,12 +704,13 @@ temp <- temp %>% mutate(phys_inf_d = as.numeric(phys_inf)  - as.numeric(phys_inf
     TRUE ~ "Stable"
   )) %>% mutate( phys_inf_d= factor(phys_inf_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
 
-temp <- temp %>% mutate(ment_inf_d = as.numeric(ment_inf)  - as.numeric(ment_inf_2)) %>% 
-  mutate(ment_inf_d = case_when(
-    ment_inf_d > 0 ~ "Increased",
-    ment_inf_d < 0 ~ "Reduced",
-    TRUE ~ "Stable"
-  )) %>% mutate( ment_inf_d= factor(ment_inf_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+#Later in explorative_analysis.Rmd we find out that some variables cannot be fitted. We remove them now not to loose data over them
+# temp <- temp %>% mutate(ment_inf_d = as.numeric(ment_inf)  - as.numeric(ment_inf_2)) %>% 
+#   mutate(ment_inf_d = case_when(
+#     ment_inf_d > 0 ~ "Increased",
+#     ment_inf_d < 0 ~ "Reduced",
+#     TRUE ~ "Stable"
+#   )) %>% mutate( ment_inf_d= factor(ment_inf_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
 
 
 ```
@@ -757,18 +774,15 @@ table(is.na(additionalq$life_qual))
 table(is.na(additionalq$employment))
 table(is.na(additionalq$education))
 
-cat("Down to:" ,nrow(na.omit(additionalq)),"from:",nrow(additionalq),"\n")
-changedata <- na.omit(additionalq)
-
 ```
 
 ```{r}
-ggplot(changedata) + geom_bar(aes(x=life_qual))
+ggplot(additionalq) + geom_bar(aes(x=life_qual))
 ```
 
 Could excellent be combined very_good and very_poor and poor to average?
 ```{r}
-changedata <- changedata %>% mutate(life_qual = case_when(
+additionalq <- additionalq %>% mutate(life_qual = case_when(
   life_qual == "very_poor" ~ "average",
   life_qual == "poor" ~ "average",
   life_qual == "average" ~ "average",
@@ -780,13 +794,13 @@ changedata <- changedata %>% mutate(life_qual = case_when(
 
 
 ```{r}
-ggplot(changedata) + geom_bar(aes(x=employment))
+ggplot(additionalq) + geom_bar(aes(x=employment))
 ```
 
 This is not at all informative. Could it be fulltime or not?
 
 ```{r}
-changedata <- changedata %>% mutate(employment = case_when(
+additionalq <- additionalq %>% mutate(employment = case_when(
   employment == "full-time" ~ TRUE,
   TRUE ~ FALSE
   ))
@@ -794,22 +808,29 @@ changedata <- changedata %>% mutate(employment = case_when(
 
 
 ```{r}
-ggplot(changedata) + geom_bar(aes(x=education))
+ggplot(additionalq) + geom_bar(aes(x=education))
 ```
 
 Also some grouping would be good in here.
 
 ```{r}
-changedata <- changedata %>% mutate(education = case_when(
+additionalq <- additionalq %>% mutate(education = case_when(
   education == "trade-school" |  education == "vocational_college" |  education == "graduate_degree" | education == "bachelor_degree"   ~ "high",
   education == "vocational_school" |  education == "high-school"  ~ "middle",
   education == "basic_education" | education == "middle-school"  ~ "lower"
   
   )) %>% mutate(education = factor(education))
+#Later in explorative_analysis.Rmd we find out that education cannot be fitted 
+additionalq <- additionalq %>% select(-education)
 ```
 
 
 ```{r}
+
+cat("Down to:" ,nrow(na.omit(additionalq)),"from:",nrow(additionalq),"\n")
+changedata <- na.omit(additionalq)
+
+
 #changedata <- inner_join(changedata,additionalq,by=c("donor"="donor"))
 file <- "../results/changedata.rdata"
 save(changedata,file=file)

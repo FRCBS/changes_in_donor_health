@@ -5,7 +5,6 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
--poista malleista ne jotka ei boottaa
 -sitten kuvasta siisti:
   -inf arvot
   -iso kuva supplementtiin
@@ -62,25 +61,31 @@ regression_data_men <- inner_join(changedata,reg_data$men,by=c("donor"="donor"))
 regression_data_post_menop_women <- inner_join(changedata,reg_data$womenpost,by=c("donor"="donor"))
 regression_data_pre_menop_women <- inner_join(changedata,reg_data$womenpre,by=c("donor"="donor"))
 
-#Bringing in extra data will bring some NAs
-regression_data_men <- droplevels(na.omit(regression_data_men))
+
+#Later in this script we find that smoking behaviour can not be fitted so they are dropped now not to loose data over them. 
+regression_data_men <- regression_data_men %>%  dplyr::select(-smoking_behavior)
+regression_data_post_menop_women <- regression_data_post_menop_women %>% dplyr::select(-smoking_behavior)
+regression_data_pre_menop_women <- regression_data_pre_menop_women %>%  dplyr::select(-smoking_behavior)
+#Bringing in extra data will bring some NAs.
+regression_data_men <-  droplevels(na.omit(regression_data_men))
 regression_data_post_menop_women <- droplevels(na.omit(regression_data_post_menop_women)) 
 regression_data_pre_menop_women <- droplevels(na.omit(regression_data_pre_menop_women))
 
 #Sleep night needs to be scaled
-regression_data_men <- regression_data_men %>% mutate(sleep_night_d = scale(sleep_night_d, scale = FALSE)[,1]) 
-regression_data_post_menop_women <- regression_data_post_menop_women %>% mutate(sleep_night_d = scale(sleep_night_d, scale = FALSE)[,1])
-regression_data_pre_menop_women <- regression_data_pre_menop_women %>% mutate(sleep_night_d = scale(sleep_night_d, scale = FALSE)[,1])
+#Later in this script we find that sleep_night_d can not be fitted
+# regression_data_men <- regression_data_men %>% mutate(sleep_night_d = scale(sleep_night_d, scale = FALSE)[,1]) 
+# regression_data_post_menop_women <- regression_data_post_menop_women %>% mutate(sleep_night_d = scale(sleep_night_d, scale = FALSE)[,1])
+# regression_data_pre_menop_women <- regression_data_pre_menop_women %>% mutate(sleep_night_d = scale(sleep_night_d, scale = FALSE)[,1])
 
 
 #Fuse back together for later use "Pre_menopause_women", "Post_menopause_women","Men" and join with unscaled data
 m<- regression_data_men %>% mutate(group = "Men")
 e<- regression_data_post_menop_women %>% mutate(group = "Post_menopause_women")
 o <- regression_data_pre_menop_women %>% mutate(group = "Pre_menopause_women")
-temp <- bind_rows(m,e,o) %>%  select(-age,-BMI_diff,-donation_frequency,-Hb_beginning,-log_Ferritin_beginning,-starting_weight)
+temp <- bind_rows(m,e,o) %>%  dplyr::select(-age,-BMI_diff,-donation_frequency,-Hb_beginning,-log_Ferritin_beginning,-starting_weight)
 file <- "../results/hypregdata_unscaled.rdata"
 load(file=file)
-regression_data <- regression_data %>% select(age,BMI_diff,donation_frequency,Hb_beginning,log_Ferritin_beginning,starting_weight,donor) %>% inner_join(temp,by=c("donor"="donor")) #%>% select(-anemia_hist_d,-high_hb_hist_d,-education,-smoking_behavior)
+regression_data <- regression_data %>% dplyr::select(age,BMI_diff,donation_frequency,Hb_beginning,log_Ferritin_beginning,starting_weight,donor) %>% inner_join(temp,by=c("donor"="donor")) #%>% select(-anemia_hist_d,-high_hb_hist_d,-education,-smoking_behavior)
 
 ```
 
@@ -106,7 +111,7 @@ logit_pre_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                anemia_hist_d + 
 #                               high_hb_hist_d + # The following terms are causing separation among the sample points: high_hb_hist_dTRUE
                                iron_supp_d + 
-                               sleep_night_d + 
+                               #sleep_night_d + # #fails in bootstrapping
                                freq_calm_d + 
                                freq_red_meat_d + 
                                freq_fruits_d + 
@@ -121,16 +126,16 @@ logit_pre_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                day_act_d + 
                                h_act_light_d + 
                                vita_multi_d + 
-                               vita_iron_d + 
+                               #vita_iron_d +  #fails in bootstrapping
                                sleep_tired_d + 
                                anti_inf_d + 
                                phys_inf_d + 
-                               ment_inf_d + 
+                               #ment_inf_d +  #fails in bootstrapping
                                freq_alc_d +
                                life_qual +
-                               education  +  
-                               employment + 
-                             smoking_behavior  
+                               #education  +  #fails in bootstrapping
+                               employment  
+                             #smoking_behavior  #fails in bootstrapping
                              ,
                              data=regression_data_pre_menop_women,
                             family="binomial", separation = 'test')
@@ -182,7 +187,7 @@ logit_post_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff 
                               anemia_hist_d + 
                                # high_hb_hist_d + # no postive cases 
                                iron_supp_d + 
-                               sleep_night_d + 
+                               #sleep_night_d + #fails in bootstrapping
                                freq_calm_d + 
                                freq_red_meat_d + 
                                freq_fruits_d + 
@@ -201,12 +206,12 @@ logit_post_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff 
                                sleep_tired_d + 
                                anti_inf_d + 
                                phys_inf_d + 
-                               ment_inf_d + 
+                               #ment_inf_d + #fails in bootstrapping
                                freq_alc_d +
                                life_qual +
-                               education + 
+                               #education + #fails in bootstrapping
                                employment 
-                               #smoking_behavior
+                               #smoking_behavior #fails in bootstrapping
                              ,
                              data=regression_data_post_menop_women,
                             family="binomial", separation = 'test')
@@ -240,7 +245,7 @@ tidy_logit_post_menop_women <-
 
 
 
-# Post menopausal women
+# Men
 
 ```{r}
 summary(regression_data_men)
@@ -259,7 +264,7 @@ logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                               # anemia_hist_d + # eparation exists among the sample points.
                                high_hb_hist_d + 
                                iron_supp_d + 
-                               sleep_night_d + 
+                              # sleep_night_d + #fails in bootstrapping
                                freq_calm_d + 
                                freq_red_meat_d + 
                                freq_fruits_d + 
@@ -274,16 +279,16 @@ logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                day_act_d + 
                                h_act_light_d + 
                                vita_multi_d + 
-                               vita_iron_d + 
+                               #vita_iron_d + 
                                sleep_tired_d + 
                                anti_inf_d + 
                                phys_inf_d + 
-                               ment_inf_d + 
+                               #ment_inf_d + #fails in bootstrapping 
                                freq_alc_d +
                                life_qual +
-                               education + 
-                               employment +
-                              smoking_behavior
+                              # education + #fails in bootstrapping 
+                               employment 
+                              # smoking_behavior #fails in bootstrapping
                              ,
                              data=regression_data_men,
                           #    data=test_data_std,
@@ -423,11 +428,11 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
                                                   day_act_d,
                                                   h_act_light_d,
                                                   vita_multi_d,
-                                                  vita_iron_d,
+                                                  #vita_iron_d, #Error in t.star[r, ] <- res[[r]]
                                                   sleep_tired_d,
                                                   anti_inf_d,
                                                   phys_inf_d,
-                                                #  ment_inf_d,
+                                                  #  ment_inf_d,
                                                   freq_alc_d,
                                                   life_qual,
                                                   employment
