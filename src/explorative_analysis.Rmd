@@ -22,14 +22,14 @@ knitr::opts_chunk$set(
 library(epiDisplay)
 library(tidyverse)
 library(safeBinaryRegression)
-#library(epitools)
-#library(ez)
+library(epitools)
+library(ez)
 library(lubridate)
-#library(ggbeeswarm)
+library(ggbeeswarm)
 library(tidymodels)
-#library(broom)
-#library(GGally)
-#library(ggfortify)
+library(broom)
+library(GGally)
+library(ggfortify)
 library(car)
 library(boot)
 
@@ -86,6 +86,7 @@ temp <- bind_rows(m,e,o) %>%  dplyr::select(-age,-BMI_diff,-donation_frequency,-
 file <- "../results/hypregdata_unscaled.rdata"
 load(file=file)
 regression_data <- regression_data %>% dplyr::select(age,BMI_diff,donation_frequency,Hb_beginning,log_Ferritin_beginning,starting_weight,donor) %>% inner_join(temp,by=c("donor"="donor")) #%>% select(-anemia_hist_d,-high_hb_hist_d,-education,-smoking_behavior)
+regression_data %>% group_by(group) %>% count()
 
 ```
 
@@ -686,13 +687,10 @@ temp <-
 
 ```
 
-
-
 ```{r}
-
 bootstrap_Bca_CI <- temp
 # "\U0394 BMI"
-bootstrap_distrib %>% 
+plotdata <- bootstrap_distrib %>% 
   mutate(regressor = plyr::revalue(regressor, regressor_values),
   regressor = ordered(regressor,
                   levels = as.character(regressor_values)),
@@ -701,12 +699,29 @@ bootstrap_distrib %>%
     group == "Post_menopause_women" ~ "Post-menopausal women",
     TRUE ~ "Men"),
   group = ordered(group, levels = c( "Men",  "Post-menopausal women", "Pre-menopausal women" ) )) %>% 
-  mutate(OR = exp(coefficient)) %>% 
-  ggplot(aes(x = regressor, y = OR, color = group, fill = group)) +
+  mutate(OR = exp(coefficient))
+
+```
+
+#Small plot of filtered variables to main paper
+```{r}
+#set the forest plot OR scale lims
+orlimR <- 1000
+orlimL <- 1/orlimR
+#Filter for those that are sig in some:
+bootstrap_Bca_CI_filtered <- bootstrap_Bca_CI %>% group_by(regressor) %>% mutate(some_sig= any(is_sig)) %>% filter(some_sig == TRUE)
+#Set values on axes limits to facilitate plotting
+bootstrap_Bca_CI_filtered$Bca_sup[bootstrap_Bca_CI_filtered$Bca_sup > orlimR] <- orlimR
+bootstrap_Bca_CI_filtered$Bca_inf[bootstrap_Bca_CI_filtered$Bca_inf < orlimL] <- orlimL
+
+plotdata_filtered <- plotdata %>% filter(plotdata$regressor %in% bootstrap_Bca_CI_filtered$regressor) 
+
+
+p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plotdata_filtered) +
   geom_hline(yintercept = 1 , color = "grey", linetype = "dotted",
              size = 1) +
   # geom_violin(alpha = 0.15, trim = TRUE, position = position_dodge(width = 0.8), size = 0.1) +
-  geom_pointrange(data = bootstrap_Bca_CI, 
+  geom_pointrange(data = bootstrap_Bca_CI_filtered, 
                   aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
                   position = position_dodge(width = 0.7), size = 1) +
   # geom_point(data = bootstrap_Bca_CI, 
@@ -717,7 +732,7 @@ bootstrap_distrib %>%
      scale_fill_manual(values = c(  "#0065BD", "#BA0303", "#C50084" ),
                      limits = c("Men",  "Post-menopausal women","Pre-menopausal women" )) +
  scale_shape_manual(values = c(1,16)) +
-  scale_y_log10(limits=c(1/40,40)) +
+  scale_y_log10(limits=c(orlimL,orlimR)) +
   # scale_x_discrete(labels=parse(text=unique(bootstrap_Bca_CI$regressor)))
   # ylim(1/35, 35) +
   guides(shape = FALSE) +
@@ -748,7 +763,71 @@ bootstrap_distrib %>%
         plot.title =  element_text(size = 16),
         plot.subtitle = element_text(size = 16,
                                      hjust = 0.5))
-   
+
+p
+# ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.png",
+#        width = 35,
+#        height = 18,
+#        dpi = "print",
+#        units = "cm")
+
+```
+
+
+#Big plot of all variables to supplement
+```{r}
+
+
+
+
+p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plotdata) +
+  geom_hline(yintercept = 1 , color = "grey", linetype = "dotted",
+             size = 1) +
+  # geom_violin(alpha = 0.15, trim = TRUE, position = position_dodge(width = 0.8), size = 0.1) +
+  geom_pointrange(data = bootstrap_Bca_CI, 
+                  aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
+                  position = position_dodge(width = 0.7), size = 1) +
+  # geom_point(data = bootstrap_Bca_CI, 
+  #            aes(shape = is_sig, fill = group),
+  #            position = position_dodge(width = 0.8), size = 2) +
+    scale_color_manual(values = c(  "#0065BD", "#BA0303", "#C50084" ),
+                     limits = c("Men",  "Post-menopausal women","Pre-menopausal women" )) +
+     scale_fill_manual(values = c(  "#0065BD", "#BA0303", "#C50084" ),
+                     limits = c("Men",  "Post-menopausal women","Pre-menopausal women" )) +
+ scale_shape_manual(values = c(1,16)) +
+  scale_y_log10(limits=c(1/50,50)) +
+  # scale_x_discrete(labels=parse(text=unique(bootstrap_Bca_CI$regressor)))
+  # ylim(1/35, 35) +
+  guides(shape = FALSE) +
+  theme_classic() +
+  # theme(legend.position = c(0.8,0.9),
+  #       legend.title = element_blank(),
+  #       legend.box = "vertical",
+  #       legend.text = element_text(size = 20),
+  #       plot.title =  element_text(size = 24,
+  #                                 hjust = 0),
+  #       panel.grid.minor.y = element_blank(),
+  #       axis.line = element_line(colour="black"),
+  #       axis.title.y = element_blank(),
+  #       axis.title.x = element_text(size = 24),
+  #       axis.text = element_text(size = 22),
+  #       panel.grid.major.y = element_blank()) +
+  coord_flip() +
+  xlab("Robust standardized coefficient") +
+  labs(title = "PREDICTORS OF WORSENED SELF-RATED HEALTH \nBETWEEN QUESTIONNAIRES",
+       subtitle = "") +
+   theme(axis.title = element_text(size = 14),
+        strip.text =  element_text(size = 14),
+        legend.text = element_text(size = 12),
+        strip.background = element_rect(fill = "white"),
+        strip.background.x = element_blank(),
+        axis.text.y = element_text(size = 14),
+        axis.text.x = element_text(size = 14, angle = 30,hjust = 0.8),
+        plot.title =  element_text(size = 16),
+        plot.subtitle = element_text(size = 16,
+                                     hjust = 0.5))
+
+p
 # ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.png",
 #        width = 35,
 #        height = 18,

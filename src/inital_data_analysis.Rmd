@@ -837,3 +837,7 @@ save(changedata,file=file)
 
 ```
 
+```{r}
+changedata %>% group_by(group) %>% count()
+```
+
