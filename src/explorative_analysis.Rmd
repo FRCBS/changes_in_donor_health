@@ -1,14 +1,10 @@
 ---
 title: "Explorative data analysis for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
-author: "Mikko Arvasr"
+author: "Mikko Arvas"
 date: "`r Sys.time()`"
 output: html_document
 ---
 
--sitten kuvasta siisti:
-  -inf arvot
-  -iso kuva supplementtiin
-  -pikku kuva julkaisuun (p-arvo suodatus?)
 
 ```{r setup, include=FALSE}
 Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
@@ -40,7 +36,8 @@ library(boot)
 
 # Executive summary
 
-This file includes the code for computing the regression results regarding the predictors of the evolution of self-related health during the FinDonor study for the 
+This file includes the code for computing the regression results regarding the predictors of the evolution of self-related health during the FinDonor study for the explorative analysis parts. Models containing as many predictor variables as possible are fitted to data and confidence intervals for coefficients computed with bootstrapping.
+
 # Load the data
 
 We load the data from hypothesis based regressions and initial data analysis and combine them together. 
@@ -63,9 +60,9 @@ regression_data_pre_menop_women <- inner_join(changedata,reg_data$womenpre,by=c(
 
 
 #Later in this script we find that smoking behaviour can not be fitted so they are dropped now not to loose data over them. 
-regression_data_men <- regression_data_men %>%  dplyr::select(-smoking_behavior)
-regression_data_post_menop_women <- regression_data_post_menop_women %>% dplyr::select(-smoking_behavior)
-regression_data_pre_menop_women <- regression_data_pre_menop_women %>%  dplyr::select(-smoking_behavior)
+regression_data_men <- regression_data_men %>%  dplyr::select(-smoking_behavior,-health_outcome_neg)
+regression_data_post_menop_women <- regression_data_post_menop_women %>% dplyr::select(-smoking_behavior,-health_outcome_neg)
+regression_data_pre_menop_women <- regression_data_pre_menop_women %>%  dplyr::select(-smoking_behavior,-health_outcome_neg)
 #Bringing in extra data will bring some NAs.
 regression_data_men <-  droplevels(na.omit(regression_data_men))
 regression_data_post_menop_women <- droplevels(na.omit(regression_data_post_menop_women)) 
@@ -90,6 +87,9 @@ regression_data %>% group_by(group) %>% count()
 
 ```
 
+```{r}
+regression_data %>% ungroup() %>% count()
+```
 
 # Premenopausal women
 
@@ -98,8 +98,7 @@ Check that final data has some variation
 summary(regression_data_pre_menop_women)
 ```
 
-There is only one case who aquired high Hb during the research period. With "education" and "smoking" included as explenatory variables the glm function could not find a fit for post_menopause women. Futhermore for men anemia_history caused "perfect separation" found with function "safeBinaryRegression".  
-For sake of completnes  all these variables are removed from all the models. None of these variables showed any level of significance in the groups of donors were they could be modelled hence excluding is not likely to miss any true effects.
+All explenatory variables selected in inital_data_analysis.Rmd were tried,  but could not be used because of problems in model fitting. These were then left out and also removed from the data assembly process in the inital_data_analysis.Rmd not to loose data because of these unusable variables. The variables left out are specified in code below for each group.
 
 ```{r}
 logit_pre_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
@@ -352,11 +351,12 @@ get_coefficients <- function(data, boot_ind){
 
 
 
-compute_Bca_CI <-function(fit_boot){
+compute_Bca_CI <-function(fit_boot,conf = 0.95){
+  cat("compute_Bca_CI with conf: ",conf,"\n")
   Bca_inf = rep(0, length(fit_boot$t0))
   Bca_sup = rep(0, length(fit_boot$t0))
   for (i_regressor in 1:length(fit_boot$t0)){
-    CI <- boot.ci(fit_boot, type = "bca", index=i_regressor)
+    CI <- boot.ci(fit_boot, type = "bca", index=i_regressor,conf = conf)
     Bca_inf[i_regressor] <- CI$bca[4]
     Bca_sup[i_regressor] <- CI$bca[5]
   }
@@ -376,8 +376,9 @@ get_bootstrap <- function(data, nb_boot){
   names(fit_boot_distrib) <- names(fit_boot$t0)
 
   fit_boot_Bca <- compute_Bca_CI(fit_boot)
+  fit_boot_Bca_2 <- compute_Bca_CI(fit_boot,conf=0.80)
   cat(nrow(data),"get_bootstrap 3\n")
-  return(list(fit_boot_distrib,fit_boot_Bca))
+  return(list(fit_boot_distrib,fit_boot_Bca,fit_boot_Bca_2))
 }
 
 
@@ -533,8 +534,9 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
     mutate(group = current_group)
       cat(nrow(test_data_std),current_group,"get_bootstrap_coeffs 3\n")
   Bca_CI  <- result[[2]] %>% mutate(group = current_group)
+  Bca_CI_2  <- result[[3]] %>% mutate(group = current_group)
   cat(nrow(test_data_std),current_group,"get_bootstrap_coeffs 4\n")
-  return(list(bootstrap_distrib,Bca_CI))
+  return(list(bootstrap_distrib,Bca_CI,Bca_CI_2))
 }
 
 
@@ -552,34 +554,43 @@ for(group_str in c("Pre_menopause_women","Men","Post_menopause_women")){
 #for(group_str in c("Post_menopause_women","Pre_menopause_women")){
   output_file_distrib = paste0("../results/bootstraps/exp_coeff_boot_distrib_seed_125_ctr_strata_final_",group_str,".rdata")
   output_file_Bca = paste0("../results/bootstraps/exp_coeff_boot_Bca_seed_125_ctr_strata_final_",group_str,".rdata")
-  get_from_file_ferr <- all(file.exists(output_file_distrib),file.exists(output_file_Bca) )
+  output_file_Bca_2 = paste0("../results/bootstraps/exp_coeff_boot_Bca_2_seed_125_ctr_strata_final_",group_str,".rdata")
+  get_from_file_ferr <- all(file.exists(output_file_distrib),file.exists(output_file_Bca),file.exists(output_file_Bca_2) )
   if (get_from_file_ferr){
     cat("Loading boots from file for group ",group_str,"\n")
     stuff <- list()
     load(file=output_file_distrib)
     load(file=output_file_Bca)
+    load(file=output_file_Bca_2)
     stuff[[1]] <- temp1  
     stuff[[2]] <- temp2
-    
+    stuff[[3]] <- temp3
   }else {
     stuff <- get_bootstrap_coeffs(regression_data, group_str, nb_boot = 10000)
     #         stuff <- get_bootstrap_coeffs(regression_data, group_str, nb_boot = 1000)
     temp1 <- stuff[[1]] 
     temp2 <- stuff[[2]] 
+    temp3 <- stuff[[3]] 
     save(temp1,file=output_file_distrib) 
     save(temp2,file=output_file_Bca)
+    save(temp3,file=output_file_Bca_2)
   }
   
   if(!exists("bootstrap_distrib")){
-    cat("initializing bootstrap_distrib & bootstrap_Bca_CI\n")
+    cat("initializing bootstrap_distrib, bootstrap_Bca_CI_2 & bootstrap_Bca_CI\n")
 
     bootstrap_distrib <- stuff[[1]]
+    cat("nrow(bootstrap_distrib)",nrow(bootstrap_distrib),"\n")
     bootstrap_Bca_CI <- stuff[[2]]
+    cat("nrow(bootstrap_Bca_CI)",nrow(bootstrap_Bca_CI),"\n")
+    bootstrap_Bca_CI_2 <- stuff[[3]]
+    cat("nrow(bootstrap_Bca_CI_2)",nrow(bootstrap_Bca_CI_2),"\n")
   }else
   {
     cat("bootstrap_distrib & bootstrap_Bca_CI already exist\n")
     bootstrap_distrib<-bind_rows(bootstrap_distrib, stuff[[1]])
     bootstrap_Bca_CI<-bind_rows(bootstrap_Bca_CI, stuff[[2]])
+    bootstrap_Bca_CI_2<-bind_rows(bootstrap_Bca_CI_2, stuff[[3]])
   }
   
 }
@@ -614,8 +625,8 @@ regressor_values <- c(
 "iron_supp_dIncreased" = "FRCBS iron supplementation increased",
 "vita_multi_dStable" = "Frequency multivitamine stable",
 "vita_multi_dIncreased" = "Frequency multivitamine increased",
-"vita_iron_dStable" = "Frequency iron supplements stable",
-"vita_iron_dIncreased" = "Frequency iron supplements increased",
+#"vita_iron_dStable" = "Frequency iron supplements stable",
+#"vita_iron_dIncreased" = "Frequency iron supplements increased",
 "anti_inf_dStable" = "Frequency of anti-inflammatory stable",
 "anti_inf_dIncreased" = "Frequency of anti-inflammatory increased",
 "freq_red_meat_dStable" = "Frequency of red meat stable",
@@ -683,6 +694,29 @@ temp <-
     )
   )
 
+temp2 <-
+  tidy_logit_men %>% 
+  bind_rows(tidy_logit_post_menop_women) %>% 
+  bind_rows(tidy_logit_pre_menop_women) %>% 
+  dplyr::select(group, term, OR, p.value) %>% 
+  rename(regressor = term) %>% 
+  inner_join(bootstrap_Bca_CI_2,
+             by =  c("regressor", "group")) %>% 
+  filter(regressor != "(Intercept)") %>% 
+  mutate(Bca_inf = exp(Bca_inf),
+         Bca_sup = exp(Bca_sup),
+         is_sig = p.value < 0.05) %>%
+  mutate(
+    regressor = plyr::revalue(regressor, regressor_values),
+    regressor = ordered(regressor,
+                        levels =  as.character(regressor_values)),
+    regressor = fct_rev(regressor),
+    group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal women",
+                      group == "Post_menopause_women" ~ "Post-menopausal women",
+                      TRUE ~ "Men"),
+    group = ordered(group, levels = c(  "Pre-menopausal women",  "Post-menopausal women", "Men"  )
+    )
+  )
     
 
 ```
@@ -701,18 +735,42 @@ plotdata <- bootstrap_distrib %>%
   group = ordered(group, levels = c( "Men",  "Post-menopausal women", "Pre-menopausal women" ) )) %>% 
   mutate(OR = exp(coefficient))
 
+bootstrap_Bca_CI_2 <- temp2
+# "\U0394 BMI"
+plotdata <- bootstrap_distrib %>% 
+  mutate(regressor = plyr::revalue(regressor, regressor_values),
+  regressor = ordered(regressor,
+                  levels = as.character(regressor_values)),
+  regressor = fct_rev(regressor),
+  group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal women",
+    group == "Post_menopause_women" ~ "Post-menopausal women",
+    TRUE ~ "Men"),
+  group = ordered(group, levels = c( "Men",  "Post-menopausal women", "Pre-menopausal women" ) )) %>% 
+  mutate(OR = exp(coefficient))
+
+
 ```
 
-#Small plot of filtered variables to main paper
-```{r}
+#Small plot of filtered variables for main paper
+```{r fig1, fig.height = 10, fig.width = 15}
 #set the forest plot OR scale lims
 orlimR <- 1000
 orlimL <- 1/orlimR
+pointrange2size <- 1.4
 #Filter for those that are sig in some:
 bootstrap_Bca_CI_filtered <- bootstrap_Bca_CI %>% group_by(regressor) %>% mutate(some_sig= any(is_sig)) %>% filter(some_sig == TRUE)
 #Set values on axes limits to facilitate plotting
 bootstrap_Bca_CI_filtered$Bca_sup[bootstrap_Bca_CI_filtered$Bca_sup > orlimR] <- orlimR
+bootstrap_Bca_CI_filtered$Bca_sup[bootstrap_Bca_CI_filtered$Bca_sup == 0] <- orlimR
 bootstrap_Bca_CI_filtered$Bca_inf[bootstrap_Bca_CI_filtered$Bca_inf < orlimL] <- orlimL
+
+#Filter for those that are sig in some:
+bootstrap_Bca_CI_filtered_2 <- bootstrap_Bca_CI_2 %>% group_by(regressor) %>% mutate(some_sig= any(is_sig)) %>% filter(some_sig == TRUE)
+#Set values on axes limits to facilitate plotting
+bootstrap_Bca_CI_filtered_2$Bca_sup[bootstrap_Bca_CI_filtered_2$Bca_sup > orlimR] <- orlimR
+bootstrap_Bca_CI_filtered_2$Bca_sup[bootstrap_Bca_CI_filtered_2$Bca_sup == 0] <- orlimR
+bootstrap_Bca_CI_filtered_2$Bca_inf[bootstrap_Bca_CI_filtered_2$Bca_inf < orlimL] <- orlimL
+
 
 plotdata_filtered <- plotdata %>% filter(plotdata$regressor %in% bootstrap_Bca_CI_filtered$regressor) 
 
@@ -721,10 +779,13 @@ p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plot
   geom_hline(yintercept = 1 , color = "grey", linetype = "dotted",
              size = 1) +
   # geom_violin(alpha = 0.15, trim = TRUE, position = position_dodge(width = 0.8), size = 0.1) +
-  geom_pointrange(data = bootstrap_Bca_CI_filtered, 
+  geom_pointrange(data = bootstrap_Bca_CI_filtered,
                   aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
-                  position = position_dodge(width = 0.7), size = 1) +
-  # geom_point(data = bootstrap_Bca_CI, 
+                  position = position_dodge(width = 0.7), size = 1, linetype = 2) +
+  geom_pointrange(data = bootstrap_Bca_CI_filtered_2,
+                  aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
+                  position = position_dodge(width = 0.7), size = pointrange2size) +
+  # # geom_point(data = bootstrap_Bca_CI, 
   #            aes(shape = is_sig, fill = group),
   #            position = position_dodge(width = 0.8), size = 2) +
     scale_color_manual(values = c(  "#0065BD", "#BA0303", "#C50084" ),
@@ -765,29 +826,50 @@ p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plot
                                      hjust = 0.5))
 
 p
-# ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.png",
-#        width = 35,
-#        height = 18,
-#        dpi = "print",
-#        units = "cm")
+
+```
+
+```{r}
+
+p <- p +   labs(title = NULL,subtitle = NULL)
+ggplot2::ggsave(filename = "../results/figures/exp_small_log_reg_results_b.pdf",
+                plot= p,
+# do not change these rather just scale the ready pdf later if you need.
+       width = 35,
+       height = 25,
+       dpi = "print",
+       units = "cm")
 
 ```
 
 
-#Big plot of all variables to supplement
-```{r}
+#Big plot of all variables for supplement
+```{r fig2, fig.height = 40, fig.width = 15}
+
+bootstrap_Bca_CI$Bca_sup[bootstrap_Bca_CI$Bca_sup > orlimR] <- orlimR
+bootstrap_Bca_CI$Bca_sup[bootstrap_Bca_CI$Bca_sup == 0] <- orlimR
+bootstrap_Bca_CI$Bca_inf[bootstrap_Bca_CI$Bca_inf < orlimL] <- orlimL
+
+#Set values on axes limits to facilitate plotting
+bootstrap_Bca_CI_2$Bca_sup[bootstrap_Bca_CI_2$Bca_sup > orlimR] <- orlimR
+bootstrap_Bca_CI_2$Bca_sup[bootstrap_Bca_CI_2$Bca_sup == 0] <- orlimR
+bootstrap_Bca_CI_2$Bca_inf[bootstrap_Bca_CI_2$Bca_inf < orlimL] <- orlimL
 
 
+#plotdata_filtered <- plotdata %>% filter(plotdata$regressor %in% bootstrap_Bca_CI_filtered$regressor) 
 
 
-p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plotdata) +
+p2  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plotdata) +
   geom_hline(yintercept = 1 , color = "grey", linetype = "dotted",
              size = 1) +
   # geom_violin(alpha = 0.15, trim = TRUE, position = position_dodge(width = 0.8), size = 0.1) +
-  geom_pointrange(data = bootstrap_Bca_CI, 
+  geom_pointrange(data = bootstrap_Bca_CI,
                   aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
-                  position = position_dodge(width = 0.7), size = 1) +
-  # geom_point(data = bootstrap_Bca_CI, 
+                  position = position_dodge(width = 0.7), size = 1, linetype = 2) +
+  geom_pointrange(data = bootstrap_Bca_CI_2,
+                  aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
+                  position = position_dodge(width = 0.7), size = pointrange2size) +
+  # # geom_point(data = bootstrap_Bca_CI, 
   #            aes(shape = is_sig, fill = group),
   #            position = position_dodge(width = 0.8), size = 2) +
     scale_color_manual(values = c(  "#0065BD", "#BA0303", "#C50084" ),
@@ -795,7 +877,7 @@ p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plot
      scale_fill_manual(values = c(  "#0065BD", "#BA0303", "#C50084" ),
                      limits = c("Men",  "Post-menopausal women","Pre-menopausal women" )) +
  scale_shape_manual(values = c(1,16)) +
-  scale_y_log10(limits=c(1/50,50)) +
+  scale_y_log10(limits=c(orlimL,orlimR)) +
   # scale_x_discrete(labels=parse(text=unique(bootstrap_Bca_CI$regressor)))
   # ylim(1/35, 35) +
   guides(shape = FALSE) +
@@ -827,19 +909,27 @@ p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plot
         plot.subtitle = element_text(size = 16,
                                      hjust = 0.5))
 
-p
-# ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.png",
-#        width = 35,
-#        height = 18,
-#        dpi = "print",
-#        units = "cm")
-
+p2
 ```
 
 
 
 
 
+
+
+
+
+```{r}
+p2 <- p2 +   labs(title = NULL,subtitle = NULL)
+ggplot2::ggsave(filename = "../results/figures/exp_big_log_reg_results_b.pdf",
+                plot= p2,
+       width = 35,
+       height = 45,
+       dpi = "print",
+       units = "cm")
+
+```
 
 
 

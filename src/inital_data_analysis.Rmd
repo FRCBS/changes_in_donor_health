@@ -220,6 +220,7 @@ ggplot(data) + geom_bar(aes(x=health_c))
 ```
 ```{r}
 ggplot(data) + geom_bar(aes(x=phys_cond))
+#Notice that this has been already set from worst to best unlike in the original questionaire
 ```
 
 
@@ -593,11 +594,10 @@ temp <- temp %>% mutate(freq_tea_d = as.numeric(freq_tea_2)  - as.numeric(freq_t
     TRUE ~ "Stable"
   )) %>% mutate( freq_tea_d= factor(freq_tea_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
 
-#1 is best physical condition, 5 worst, so turn this around to make it more  logical
 temp <- temp %>% mutate(phys_cond_d = as.numeric(phys_cond_2)  - as.numeric(phys_cond)) %>% 
   mutate(phys_cond_d = case_when(
-    phys_cond_d < 0 ~ "Increased",
-    phys_cond_d > 0 ~ "Reduced",
+    phys_cond_d > 0 ~ "Increased",
+    phys_cond_d < 0 ~ "Reduced",
     TRUE ~ "Stable"
   )) %>% mutate( phys_cond_d= factor(phys_cond_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
 
@@ -836,8 +836,8 @@ file <- "../results/changedata.rdata"
 save(changedata,file=file)
 
 ```
-
+Just to check:
 ```{r}
-changedata %>% group_by(group) %>% count()
+changedata %>% count()
 ```
 
