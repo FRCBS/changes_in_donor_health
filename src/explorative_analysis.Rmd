@@ -5,6 +5,12 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
+table 1 of included variables or hmisc plots? summarytools?
+
+univariate dists of signigicant:
+  -physical condition 
+  -life quality
+  that line change plot?
 
 ```{r setup, include=FALSE}
 Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
@@ -28,6 +34,8 @@ library(GGally)
 library(ggfortify)
 library(car)
 library(boot)
+library(tableone)
+library(kableExtra)
 
 #https://stats.stackexchange.com/questions/11109/how-to-deal-with-perfect-separation-in-logistic-regression
 #https://stats.stackexchange.com/questions/45803/logistic-regression-in-r-resulted-in-perfect-separation-hauck-donner-phenomenon
@@ -90,6 +98,81 @@ regression_data %>% group_by(group) %>% count()
 ```{r}
 regression_data %>% ungroup() %>% count()
 ```
+
+# Table 1 type summary
+```{r}
+#exclude variables that are not used in modelling
+table1data <- regression_data %>% ungroup() %>% dplyr::select(#-age,
+  #-starting_weight,
+  #-BMI_diff, 
+  #-log_Ferritin_beginning,
+  #-Hb_beginning,
+  #-donation_frequency,
+  -health_very_good,
+  -health_excellent,
+  -high_hb_hist_d,
+  -health_outcome,
+  -donor
+  #-high_hb_hist_d,
+  #-sleep_night_d,
+  #-vita_iron_d,
+  #-ment_inf_d,
+  #-education,
+  #-smoking_behavior
+) %>% mutate(
+  starting_weight=starting_weight*5,
+  log_Ferritin_beginning= exp((log(log_Ferritin_beginning)/log(2)) * log(2)),
+  Hb_beginning = Hb_beginning *5
+) %>% 
+  rename(
+    Age = age,
+    "Inital weight (kg)" =starting_weight,
+    "BMI difference (second - first)"=BMI_diff,
+    "Initial ferritin (ug/l)"=log_Ferritin_beginning,
+    "Initial hemoglobin (g/l)" =Hb_beginning,
+    "Donation frequency (yearly)"=donation_frequency,
+    "Anemia detected"=anemia_hist_d,
+    "Elevated cholesterol detected" =  "cholesterol_d",
+    "Elevated blood sugar detected"="blood_sugar_d" , 
+    "High blood pressure detected"="HBP_d",
+    "Low haemoglobin detected"="low_hb_hist_d",
+    "FRCBS iron supplementation"="iron_supp_d", 
+    "Frequency multivitamine"="vita_multi_d",
+    "Frequency of anti-inflammatory"="anti_inf_d",
+    "Frequency of red meat"="freq_red_meat_d",
+    "Frequency of fruits"="freq_fruits_d",
+    "Frequency of juices"="freq_juices_d",
+    "Frequency of whole milk"="freq_wholem_d",
+    "Frequency of milk"="freq_milk_d",
+    "Frequency of coffee"="freq_cof_d",
+    "Frequency of tea"="freq_tea_d",
+    "Frequency of alcohol"="freq_alc_d",
+    "Physical symptoms inferred"="phys_inf_d",
+    "Physical condition" = "phys_cond_d",
+    "Ability for heavy activity" = "act_heavy_d",
+    "Typical day activity" = "day_act_d",
+    "Hours for light activity" = "h_act_light_d",
+    "Enough sleep" = "sleep_enough_d",
+    "Tired during day" = "sleep_tired_d",
+    "Frequency of feeling calm" = "freq_calm_d",
+    "Life quality" = "life_qual",
+    "Full time employed" = "employment"
+  )
+
+myVars<- colnames(table1data %>% dplyr::select(-group))
+non_normal_vars <- c("Initial ferritin (ug/l)")
+summary_table <- CreateTableOne(data = table1data,vars=myVars, strata = "group",test = FALSE)
+  
+tab3Mat <- print(summary_table, nonnormal = non_normal_vars,vars=myVars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE)
+
+tab3Mat %>% 
+  kable()
+  write.csv(tab3Mat, file = "../results/table_1_populationExp_20200512.csv")
+ 
+#Does not work   
+#openxlsx::write.xlsx(tab3Mat, file = "../results/table_1_populationExp_20200512.xlsx",rowNames =TRUE,borders="surrounding",keepNA=TRUE)
+```
+
 
 # Premenopausal women
 
@@ -617,6 +700,8 @@ regressor_values <- c(
    "starting_weight" ="Initial weight",
    "health_very_good" ="Initial health rating \n Very good vs Satisfactory/Good",
     "health_excellent" = "Initial health rating \n Excellent vs Satisfactory/Good",
+ 
+ 
  "cholesterol_dTRUE" = "Elevated cholesterol detected",
 "blood_sugar_dTRUE" = "Elevated blood sugar detected", 
 "HBP_dTRUE" = "High blood pressure detected",
@@ -782,9 +867,9 @@ p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plot
   geom_pointrange(data = bootstrap_Bca_CI_filtered,
                   aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
                   position = position_dodge(width = 0.7), size = 1, linetype = 2) +
-  geom_pointrange(data = bootstrap_Bca_CI_filtered_2,
-                  aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
-                  position = position_dodge(width = 0.7), size = pointrange2size) +
+  # geom_pointrange(data = bootstrap_Bca_CI_filtered_2,
+  #                 aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
+  #                 position = position_dodge(width = 0.7), size = pointrange2size) +
   # # geom_point(data = bootstrap_Bca_CI, 
   #            aes(shape = is_sig, fill = group),
   #            position = position_dodge(width = 0.8), size = 2) +

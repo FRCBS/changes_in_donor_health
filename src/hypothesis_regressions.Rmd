@@ -5,7 +5,13 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
-
+-univariate dists of significant:
+  initial weigth
+  initial ferritin
+  donation frequency
+  vs outcome
+  
+  muriel has a very nice plot for this.
 
 ```{r setup, include=FALSE}
 #echo "rmarkdown::render('hypothesis_regressions.Rmd', clean=TRUE,output_format='html_document',output_file='../results/hypothesis_regressions.html')" | R --slave
@@ -25,6 +31,8 @@ library(GGally)
 library(ggfortify)
 library(car)
 library(boot)
+library(tableone)
+library(kableExtra)
 ```
 
 # Executive summary
@@ -46,7 +54,7 @@ FD_activity_biomarker_data <- data %>%
   rename(Ferritin_beginning = Ferritin)
 
 first_questionnaire_data <- final_data %>% filter(questionnaire == "First")
-
+second_questionnaire_data <- final_data %>% filter(questionnaire == "Second")
 rm(data)
 ```
 
@@ -167,20 +175,78 @@ regression_data <-
   mutate(health_outcome_neg = ifelse(health_evolution == "Improved", 1,0)) %>%
   mutate(donation_frequency = nb_donations_between_questionnaires/(interval_between_quest/12) ) %>% 
   mutate(log_Ferritin_beginning = log(Ferritin_beginning)/log(2),
+         starting_weight_o =starting_weight, 
          starting_weight = starting_weight/5,
+         age_o = age,
          age = age/5,
+         Hb_beginning_o = Hb_v,
          Hb_beginning = Hb_v/5) %>% 
   dplyr::select(donor, starting_weight,BMI_diff, age, group, log_Ferritin_beginning, Hb_beginning,
-                donation_frequency, health_very_good,health_excellent,health_outcome,health_outcome_neg, smoking_behavior  )
+                donation_frequency, health_very_good,health_excellent,health_outcome,health_outcome_neg, smoking_behavior,Ferritin_beginning,age_o,starting_weight_o,Hb_beginning_o )
 
   
 regression_data$smoking_behavior <- factor(regression_data$smoking_behavior)
-
+regression_data <- droplevels(regression_data)
 file <- "../results/hypregdata_unscaled.rdata"
 save(regression_data,file=file)
 
 
 ```
+
+```{r}
+regression_data %>% group_by(group) %>% 
+     count()
+```
+
+
+# Table one
+
+```{r}
+
+
+# myVars <- c( "age_o", "starting_weight_o" ,"BMI_diff", "Hb_beginning_o", "Ferritin_beginning",
+#              "donation_frequency","initial_health","final_health")
+
+myVars <- c(   "Age" ,
+  "Initial weight (kg)" ,
+  "BMI difference (second - first)" ,
+  "Initial hemoglobin (g/l)" ,
+  "Initial ferritin (ug/l)" ,
+  "Donation frequency (yearly)" ,
+  "Inital health rating",
+  "Final health rating")
+
+
+non_normal_vars <- c("Initial ferritin (ug/l)")
+
+health1<- first_questionnaire_data %>% dplyr::select(donor,health) %>% rename(initial_health=health)
+health2<- second_questionnaire_data %>% dplyr::select(donor,health) %>% rename(final_health=health)
+
+table1data <- regression_data %>% left_join(health1) %>% left_join(health2) 
+table1data <- table1data %>% dplyr::select(-age,-starting_weight,-log_Ferritin_beginning,-health_very_good,-health_excellent,-health_outcome,-health_outcome_neg, -smoking_behavior,-Hb_beginning) %>%
+  rename(
+  "Age" = age_o,
+  "Initial weight (kg)" = starting_weight_o ,
+  "BMI difference (second - first)" = BMI_diff,
+  "Initial hemoglobin (g/l)" = Hb_beginning_o,
+  "Initial ferritin (ug/l)" = Ferritin_beginning,
+  "Donation frequency (yearly)" =donation_frequency,
+  "Inital health rating"=initial_health,
+  "Final health rating"= final_health
+)
+
+
+summary_table <- CreateTableOne(data = table1data,vars=myVars, strata = "group",test = FALSE)
+  
+tab3Mat <- print(summary_table, nonnormal = non_normal_vars,vars=myVars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE)
+
+
+tab3Mat %>% 
+  kable()
+  write.csv(tab3Mat, file = "../results/table_1_population_20200512.csv")
+```
+
+
 
 
 ## Pre-menopausal women 
@@ -598,8 +664,8 @@ bootstrap_distrib %>%
   #       panel.grid.major.y = element_blank()) +
   coord_flip() +
   xlab("Robust standardized coefficient") +
-  labs(title = "PREDICTORS OF WORSENED SELF-RATED HEALTH \nBETWEEN QUESTIONNAIRES",
-       subtitle = "") +
+  labs(title = NULL,
+       subtitle = NULL) +
 
 
    theme(axis.title = element_text(size = 14),
@@ -613,7 +679,7 @@ bootstrap_distrib %>%
         plot.subtitle = element_text(size = 16,
                                      hjust = 0.5))
    #
-ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.png",
+ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.pdf",
        width = 35,
        height = 18,
        dpi = "print",

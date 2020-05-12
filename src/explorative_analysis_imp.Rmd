@@ -5,6 +5,7 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
+-make figure like table 1 hmisc package ?
 
 ```{r setup, include=FALSE}
 Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
@@ -792,10 +793,10 @@ p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plot
   geom_pointrange(data = bootstrap_Bca_CI_filtered,
                   aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
                   position = position_dodge(width = 0.7), size = 1, linetype = 2) +
-  geom_pointrange(data = bootstrap_Bca_CI_filtered_2,
-                  aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
-                  position = position_dodge(width = 0.7), size = pointrange2size) +
-  # # geom_point(data = bootstrap_Bca_CI, 
+  # geom_pointrange(data = bootstrap_Bca_CI_filtered_2,
+  #                 aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
+  #                 position = position_dodge(width = 0.7), size = pointrange2size) +
+  # # # geom_point(data = bootstrap_Bca_CI, 
   #            aes(shape = is_sig, fill = group),
   #            position = position_dodge(width = 0.8), size = 2) +
     scale_color_manual(values = c(  "#0065BD", "#BA0303", "#C50084" ),
