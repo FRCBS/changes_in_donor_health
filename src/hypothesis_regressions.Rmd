@@ -5,14 +5,6 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
--univariate dists of significant:
-  initial weigth
-  initial ferritin
-  donation frequency
-  vs outcome
-  
-  muriel has a very nice plot for this.
-
 ```{r setup, include=FALSE}
 #echo "rmarkdown::render('hypothesis_regressions.Rmd', clean=TRUE,output_format='html_document',output_file='../results/hypothesis_regressions.html')" | R --slave
 knitr::opts_chunk$set(
@@ -243,7 +235,7 @@ tab3Mat <- print(summary_table, nonnormal = non_normal_vars,vars=myVars, quote =
 
 tab3Mat %>% 
   kable()
-  write.csv(tab3Mat, file = "../results/table_1_population_20200512.csv")
+  write.csv(tab3Mat, file = paste0("../results/table_1_population_20200512",gsub("-","",as.Date(Sys.time())),".csv"))
 ```
 
 
@@ -679,10 +671,10 @@ bootstrap_distrib %>%
         plot.subtitle = element_text(size = 16,
                                      hjust = 0.5))
    #
-ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.pdf",
+ggplot2::ggsave(filename = "../results/figures/hyp_log_reg_results_b.pdf",
        width = 35,
        height = 18,
-       dpi = "print",
+       dpi = 600,
        units = "cm")
 
 ```
@@ -690,54 +682,224 @@ ggplot2::ggsave(filename = "../results/figures/log_reg_results_b.pdf",
 
 
 
-```{r eval=FALSE, include=FALSE}
-final_data %>% 
-  filter(questionnaire == "First") %>% 
-  dplyr::select(donor, health,group) %>% 
-  inner_join(FD_activity_biomarker_data,
-             by = c("donor", "group")) %>% 
-  # count(group, health, health_evolution) %>% 
-  # group_by(group, health) %>% 
-  # mutate(proportion = n / sum(n)) %>% 
-  # ungroup() %>% 
+# Separate plots for individual variables
+
+```{r}
+fig.width=15
+fig.height=13
+```
+
+
+## Initial hemoglobin (g/l)
+```{r}
+phb <- final_data %>% 
+  dplyr::select(donor, group, health, questionnaire) %>% 
+  drop_na(group) %>% 
+  filter( group != "Women_pre_menop_no_mens") %>% 
+  spread(key = questionnaire, value = health) %>% 
+  filter(First != "NA" & Second != "NA") %>%  
+  mutate(Difference = case_when(First < Second ~ "Improved",
+                                First == Second ~ "Stable",
+                                TRUE ~ "Worsened")) %>% 
+  inner_join(FD_activity_biomarker_data, by = c("donor", "group")) %>% 
   mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
                            group == "Post_menopause_women" ~ "Post-menopausal \n women",
-                          TRUE ~ "Men"),
-        group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
-  mutate(health = ifelse(health == "Very_good" , "Very good", as.character(health)),
-        health = ordered(health, levels = c(  "Satisfactory", "Good", "Very good", "Excellent") )) %>% 
-    mutate(health_evolution = plyr::revalue(health_evolution, health_evolution_values),
-           health_evolution = ordered(health_evolution, levels = c("Worse", "Same", "Better"))) %>% 
-  ggplot(aes(x  = health_evolution,
-             y = Hb_v,
-             color = group)) +
-   geom_quasirandom(alpha = 0.25) +
-  # geom_text(data = counted_data,
-  #           aes(label = paste("N =", n, sep = " "))) +
-    scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
-                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
+                           TRUE ~ "Men"),
+         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
+  ggplot(aes(x = Difference, y = Hb_v, color = group)) +
+  # geom_hline(yintercept = 15, color = "red", linetype = 3) +
+  geom_boxplot(outlier.alpha = 0) +
+  geom_beeswarm(alpha = 0.5, shape = 1) +
   # scale_y_log10() +
-  facet_grid(group ~ health) +
+  facet_grid(group ~.,scales="free_y") +
+  scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
+                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
   theme_bw() +
-  guides(color =  FALSE) +
-  xlab(" Evolution of health rating between questionnaires") +
-  ylab("Hemoglobin") +
-   labs(title= "Health evolution distributions",
-       subtitle = ("First questionnaire answer")) +
-  theme(axis.title = element_text(size = 12),
-        strip.text =  element_text(size = 12),
-        strip.background = element_rect(fill = "white"),
-        strip.background.x = element_blank(),
-        legend.text = element_text(size = 20), 
-        plot.title = element_text(size = 20),
-        plot.subtitle = element_text(size = 14,
-                                     hjust = 0.5))
-  
-# ggsave(filename = "../results/figures/time_between_questionnaires_distribution.png",
-#        height = 12,
-#        width = 16,
-#        dpi = "print",
-#        units = "cm")
-  
+  theme(legend.position = "none") +
+  xlab("Evolution of self-rated health") +
+  ylab("Initial hemoglobin (g/l)")
+
+
+ggplot2::ggsave(plot=phb,filename = "../results/figures/hyp_hb.pdf",
+       width = fig.width,
+       height = fig.height,
+       dpi = 600,
+       units = "cm")
+
+phb
 ```
+
+
+
+
+## Initial ferritin
+```{r}
+pfer <- final_data %>% 
+  dplyr::select(donor, group, health, questionnaire) %>% 
+  drop_na(group) %>% 
+  filter( group != "Women_pre_menop_no_mens") %>% 
+  spread(key = questionnaire, value = health) %>% 
+  filter(First != "NA" & Second != "NA") %>%  
+  mutate(Difference = case_when(First < Second ~ "Improved",
+                                First == Second ~ "Stable",
+                                TRUE ~ "Worsened")) %>% 
+  inner_join(FD_activity_biomarker_data, by = c("donor", "group")) %>% 
+  mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
+                           group == "Post_menopause_women" ~ "Post-menopausal \n women",
+                           TRUE ~ "Men"),
+         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
+  ggplot(aes(x = Difference, y = Ferritin_beginning, color = group)) +
+  # geom_hline(yintercept = 15, color = "red", linetype = 3) +
+  geom_boxplot(outlier.alpha = 0) +
+  geom_beeswarm(alpha = 0.5, shape = 1) +
+  # scale_y_log10() +
+  facet_grid(group ~.,scales="free_y") +
+  scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
+                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  xlab("Evolution of self-rated health") +
+  ylab("Initial ferritin (ug/l)") +
+  scale_y_log10() 
+  
+
+
+ggplot2::ggsave(plot=pfer,filename = "../results/figures/hyp_ferritin.pdf",
+       width = fig.width,
+       height = fig.height,
+       dpi = 600,
+       units = "cm")
+
+pfer
+```
+
+
+
+## BMI difference
+```{r}
+pbm <- final_data %>% 
+  dplyr::select(donor, group, health, questionnaire) %>% 
+  drop_na(group) %>% 
+  filter( group != "Women_pre_menop_no_mens") %>% 
+  spread(key = questionnaire, value = health) %>% 
+  filter(First != "NA" & Second != "NA") %>%  
+  mutate(Difference = case_when(First < Second ~ "Improved",
+                                First == Second ~ "Stable",
+                                TRUE ~ "Worsened")) %>% 
+  inner_join(FD_activity_biomarker_data, by = c("donor", "group")) %>% 
+  mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
+                           group == "Post_menopause_women" ~ "Post-menopausal \n women",
+                           TRUE ~ "Men"),
+         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
+  ggplot(aes(x = Difference, y = BMI_diff, color = group)) +
+  # geom_hline(yintercept = 15, color = "red", linetype = 3) +
+  geom_boxplot(outlier.alpha = 0) +
+  geom_beeswarm(alpha = 0.5, shape = 1) +
+  # scale_y_log10() +
+  facet_grid(group ~.,scales="free_y") +
+  scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
+                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  xlab("Evolution of self-rated health") +
+  ylab("BMI difference") 
+  #scale_y_log10() 
+  
+
+
+ggplot2::ggsave(plot=pbm,filename = "../results/figures/hyp_bmi_diff.pdf",
+       width = fig.width,
+       height = fig.height,
+       dpi = 600,
+       units = "cm")
+
+pbm
+```
+
+
+## Donation frequency
+```{r}
+pfq <- final_data %>% 
+  dplyr::select(donor, group, health, questionnaire) %>% 
+  drop_na(group) %>% 
+  filter( group != "Women_pre_menop_no_mens") %>% 
+  spread(key = questionnaire, value = health) %>% 
+  filter(First != "NA" & Second != "NA") %>%  
+  mutate(Difference = case_when(First < Second ~ "Improved",
+                                First == Second ~ "Stable",
+                                TRUE ~ "Worsened")) %>% 
+  inner_join(FD_activity_biomarker_data, by = c("donor", "group")) %>% 
+  mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
+                           group == "Post_menopause_women" ~ "Post-menopausal \n women",
+                           TRUE ~ "Men"),
+         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
+  ggplot(aes(x = Difference, y = nb_donations_between_questionnaires, color = group)) +
+  # geom_hline(yintercept = 15, color = "red", linetype = 3) +
+  geom_boxplot(outlier.alpha = 0) +
+  geom_beeswarm(alpha = 0.5, shape = 1) +
+  # scale_y_log10() +
+  facet_grid(group ~.,scales="free_y") +
+  scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
+                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  xlab("Evolution of self-rated health") +
+  ylab("Number of donations between questionnaires") 
+  #scale_y_log10() 
+  
+
+
+ggplot2::ggsave(plot=pfq,filename = "../results/figures/hyp_n_donations.pdf",
+       width = fig.width,
+       height = fig.height,
+       dpi = 600,
+       units = "cm")
+
+pfq
+```
+
+
+
+## Inital weigth
+```{r}
+pwe <- final_data %>% 
+  dplyr::select(donor, group, health, questionnaire) %>% 
+  drop_na(group) %>% 
+  filter( group != "Women_pre_menop_no_mens") %>% 
+  spread(key = questionnaire, value = health) %>% 
+  filter(First != "NA" & Second != "NA") %>%  
+  mutate(Difference = case_when(First < Second ~ "Improved",
+                                First == Second ~ "Stable",
+                                TRUE ~ "Worsened")) %>% 
+  inner_join(FD_activity_biomarker_data, by = c("donor", "group")) %>% 
+  mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
+                           group == "Post_menopause_women" ~ "Post-menopausal \n women",
+                           TRUE ~ "Men"),
+         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
+  ggplot(aes(x = Difference, y = starting_weight, color = group)) +
+  # geom_hline(yintercept = 15, color = "red", linetype = 3) +
+  geom_boxplot(outlier.alpha = 0) +
+  geom_beeswarm(alpha = 0.5, shape = 1) +
+  # scale_y_log10() +
+  facet_grid(group ~.,scales="free_y") +
+  scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
+                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  xlab("Evolution of self-rated health") +
+  ylab("Initial weight") 
+  #scale_y_log10() 
+  
+
+
+ggplot2::ggsave(plot=pwe,filename = "../results/figures/hyp_weight.pdf",
+       width = fig.width,
+       height = fig.height,
+       dpi = 600,
+       units = "cm")
+
+pfq
+```
+
+
 

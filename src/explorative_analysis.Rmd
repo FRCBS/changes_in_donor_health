@@ -1,16 +1,10 @@
 ---
-title: "Explorative data analysis for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
+title: "Explorative data analysis for FINDONOR - CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
 author: "Mikko Arvas"
 date: "`r Sys.time()`"
 output: html_document
 ---
 
-table 1 of included variables or hmisc plots? summarytools?
-
-univariate dists of signigicant:
-  -physical condition 
-  -life quality
-  that line change plot?
 
 ```{r setup, include=FALSE}
 Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
@@ -42,9 +36,9 @@ library(kableExtra)
 ```
 
 
-# Executive summary
+# Summary
 
-This file includes the code for computing the regression results regarding the predictors of the evolution of self-related health during the FinDonor study for the explorative analysis parts. Models containing as many predictor variables as possible are fitted to data and confidence intervals for coefficients computed with bootstrapping.
+This file includes the code for computing the regression results regarding the predictors of improving of self-related health during the FinDonor study for the explorative analysis parts. Models containing as many predictor variables as possible are fitted to data and confidence intervals for coefficients computed with bootstrapping.
 
 # Load the data
 
@@ -126,6 +120,7 @@ table1data <- regression_data %>% ungroup() %>% dplyr::select(#-age,
 ) %>% 
   rename(
     Age = age,
+    "Full time employed" = "employment",
     "Inital weight (kg)" =starting_weight,
     "BMI difference (second - first)"=BMI_diff,
     "Initial ferritin (ug/l)"=log_Ferritin_beginning,
@@ -155,8 +150,7 @@ table1data <- regression_data %>% ungroup() %>% dplyr::select(#-age,
     "Enough sleep" = "sleep_enough_d",
     "Tired during day" = "sleep_tired_d",
     "Frequency of feeling calm" = "freq_calm_d",
-    "Life quality" = "life_qual",
-    "Full time employed" = "employment"
+    "Life quality" = "life_qual"
   )
 
 myVars<- colnames(table1data %>% dplyr::select(-group))
@@ -167,7 +161,7 @@ tab3Mat <- print(summary_table, nonnormal = non_normal_vars,vars=myVars, quote =
 
 tab3Mat %>% 
   kable()
-  write.csv(tab3Mat, file = "../results/table_1_populationExp_20200512.csv")
+  write.csv(tab3Mat, file = paste0("../results/table_1_populationExp_",gsub("-","",as.Date(Sys.time())),".csv"))
  
 #Does not work   
 #openxlsx::write.xlsx(tab3Mat, file = "../results/table_1_populationExp_20200512.xlsx",rowNames =TRUE,borders="surrounding",keepNA=TRUE)
@@ -747,7 +741,7 @@ regressor_values <- c(
 "freq_calm_dStable" = "Frequency of feeling calm stable",
 "freq_calm_dIncreased" =  "Frequency of feeling calm increase",
 "life_qualgood" = "Life quality good",
-"life_qualvery_good" = "Life quality excellent",
+"life_qualvery_good" = "Life quality very good",
 "employmentTRUE" = "Full time employed"
 )
 ```
@@ -866,7 +860,7 @@ p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plot
   # geom_violin(alpha = 0.15, trim = TRUE, position = position_dodge(width = 0.8), size = 0.1) +
   geom_pointrange(data = bootstrap_Bca_CI_filtered,
                   aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
-                  position = position_dodge(width = 0.7), size = 1, linetype = 2) +
+                  position = position_dodge(width = 0.7), size = 1, linetype = 1) +
   # geom_pointrange(data = bootstrap_Bca_CI_filtered_2,
   #                 aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
   #                 position = position_dodge(width = 0.7), size = pointrange2size) +
@@ -922,7 +916,7 @@ ggplot2::ggsave(filename = "../results/figures/exp_small_log_reg_results_b.pdf",
 # do not change these rather just scale the ready pdf later if you need.
        width = 35,
        height = 25,
-       dpi = "print",
+       dpi = 600,
        units = "cm")
 
 ```
@@ -999,22 +993,104 @@ p2
 
 
 
-
-
-
-
-
-
 ```{r}
 p2 <- p2 +   labs(title = NULL,subtitle = NULL)
 ggplot2::ggsave(filename = "../results/figures/exp_big_log_reg_results_b.pdf",
                 plot= p2,
        width = 35,
        height = 45,
-       dpi = "print",
+       dpi = 600,
        units = "cm")
 
 ```
 
+
+#Separate plots for individual variables
+
+```{r}
+fig.width=15
+fig.height=13
+#Load questionnaire data
+load(file = "../data/final_data.rdata") 
+final_data <- data
+
+```
+
+## Change in physical condition color
+```{r}
+
+pdata <- final_data %>% 
+  dplyr::select(donor, group, health, questionnaire) %>% 
+  drop_na(group) %>% 
+  filter( group != "Women_pre_menop_no_mens") %>% 
+  spread(key = questionnaire, value = health) %>% 
+  filter(First != "NA" & Second != "NA") %>%  
+  mutate(Difference = case_when(First < Second ~ "Improved",
+                                First == Second ~ "Stable",
+                                TRUE ~ "Worsened")) %>% 
+  inner_join(regression_data, by = c("donor", "group")) %>% 
+  mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
+                           group == "Post_menopause_women" ~ "Post-menopausal \n women",
+                           TRUE ~ "Men"),
+         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") ))
+ 
+p <- ggplot(aes(x= phys_cond_d , fill = group), data=pdata) +
+  # geom_hline(yintercept = 15, color = "red", linetype = 3)
+  geom_bar()+
+  #geom_boxplot(outlier.alpha = 0) +
+  #geom_beeswarm(alpha = 0.5, shape = 1) +
+  # scale_y_log10() +
+  facet_grid(group ~ Difference,scales="free_y") +
+  scale_fill_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
+                    limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  ggtitle("Evolution of self-rated health") +
+  xlab("Change in physical condition") +
+  ylab("Count") +
+  geom_text(stat='count', aes(label=..count..),color="black", vjust=1)  
+#scale_y_log10() 
+
+
+
+ggplot2::ggsave(plot=p,filename = "../results/figures/exp_phys_cond_c.pdf",
+       width = fig.width,
+       height = fig.height,
+       dpi = 600,
+       units = "cm")
+
+p
+```
+
+
+
+
+## Life quality 
+```{r}
+
+p <- ggplot(aes(x= life_qual), data=pdata) +
+  # geom_hline(yintercept = 15, color = "red", linetype = 3)
+  geom_bar(aes(fill=group))+
+  #geom_boxplot(outlier.alpha = 0) +
+  #geom_beeswarm(alpha = 0.5, shape = 1) +
+  # scale_y_log10() +
+  facet_grid(group ~ Difference,scales="free_y") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  ggtitle("Evolution of self-rated health")+
+  xlab("Quality of life") +
+  ylab("Count") +
+  geom_text(stat='count', aes(label=..count..),color="black", vjust=1) +
+  scale_fill_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
+                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" ))
+
+ggplot2::ggsave(plot=p,filename = "../results/figures/exp_life_qual_c.pdf",
+       width = fig.width,
+       height = fig.height,
+       dpi = 600,
+       units = "cm")
+
+p
+```
 
 

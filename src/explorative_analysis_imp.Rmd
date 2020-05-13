@@ -5,8 +5,6 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
--make figure like table 1 hmisc package ?
-
 ```{r setup, include=FALSE}
 Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
 Sys.setenv(LANG = "en_US.UTF-8")
@@ -35,9 +33,9 @@ library(boot)
 ```
 
 
-# Executive summary
+# Summary
 
-This file includes the code for computing the regression results regarding the predictors of the evolution of self-related health during the FinDonor study for the explorative analysis parts. Models containing as many predictor variables as possible are fitted to data and confidence intervals for coefficients computed with bootstrapping.
+This file includes the code for computing the regression results regarding the predictors of worsened self-related health during the FinDonor study for the explorative analysis parts. Models containing as many predictor variables as possible are fitted to data and confidence intervals for coefficients computed with bootstrapping.
 
 # Load the data
 
