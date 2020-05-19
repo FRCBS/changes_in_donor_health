@@ -5,17 +5,9 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
--count the exclusion, step by step, they do not need to sum!
-  -2 questionnaires
-  -lacking health
-  -lacking measurement
-  -high measurement
-  
 -make OR tables
 -count group mean averages for hyp model variables
 -add the units and 5/ etc. transfromations into plots
--correlation plot, what to do with labels!? change like in the modellign part OR JUST ADD THE QUESTION NUMBERS IN FRONT
-
 
 + from email things elina found
 
