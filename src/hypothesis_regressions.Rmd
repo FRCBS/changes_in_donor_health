@@ -162,7 +162,10 @@ regression_data <-
                dplyr::select(donor, health),
              by = "donor") %>% 
   mutate(health_very_good = ifelse(health == "Very_good",1,0),
-         health_excellent = ifelse(health == "Excellent", 1, 0)) %>% 
+         health_excellent = ifelse(health == "Excellent", 1, 0),
+         health_poor = ifelse(health == "Poor", 1, 0),
+         health_satisfactory = ifelse(health == "Satisfactory", 1, 0)
+         ) %>% 
   mutate(health_outcome = ifelse(health_evolution == "Worsened", 1,0)) %>%
   mutate(health_outcome_neg = ifelse(health_evolution == "Improved", 1,0)) %>%
   mutate(donation_frequency = nb_donations_between_questionnaires/(interval_between_quest/12) ) %>% 
@@ -174,7 +177,7 @@ regression_data <-
          Hb_beginning_o = Hb_v,
          Hb_beginning = Hb_v/5) %>% 
   dplyr::select(donor, starting_weight,BMI_diff, age, group, log_Ferritin_beginning, Hb_beginning,
-                donation_frequency, health_very_good,health_excellent,health_outcome,health_outcome_neg, smoking_behavior,Ferritin_beginning,age_o,starting_weight_o,Hb_beginning_o )
+                donation_frequency,health_poor,health_satisfactory, health_very_good,health_excellent,health_outcome,health_outcome_neg, smoking_behavior,Ferritin_beginning,age_o,starting_weight_o,Hb_beginning_o )
 
   
 regression_data$smoking_behavior <- factor(regression_data$smoking_behavior)
@@ -215,7 +218,7 @@ health1<- first_questionnaire_data %>% dplyr::select(donor,health) %>% rename(in
 health2<- second_questionnaire_data %>% dplyr::select(donor,health) %>% rename(final_health=health)
 
 table1data <- regression_data %>% left_join(health1) %>% left_join(health2) 
-table1data <- table1data %>% dplyr::select(-age,-starting_weight,-log_Ferritin_beginning,-health_very_good,-health_excellent,-health_outcome,-health_outcome_neg, -smoking_behavior,-Hb_beginning) %>%
+table1data <- table1data %>% dplyr::select(group,age_o,starting_weight_o,BMI_diff,Hb_beginning_o,Ferritin_beginning,donation_frequency,initial_health,final_health) %>%
   rename(
   "Age" = age_o,
   "Initial weight (kg)" = starting_weight_o ,
@@ -235,7 +238,7 @@ tab3Mat <- print(summary_table, nonnormal = non_normal_vars,vars=myVars, quote =
 
 tab3Mat %>% 
   kable()
-  write.csv(tab3Mat, file = paste0("../results/table_1_population_20200512",gsub("-","",as.Date(Sys.time())),".csv"))
+  write.csv(tab3Mat, file = paste0("../results/table_1_population_",gsub("-","",as.Date(Sys.time())),".csv"))
 ```
 
 
@@ -255,7 +258,7 @@ regression_data_pre_menop_women <-
   dplyr::select(-value) %>% 
   spread(key = key, value = value_scale) %>% 
   inner_join(regression_data %>% 
-               dplyr::select(donor, health_very_good, health_excellent, health_outcome,health_outcome_neg,smoking_behavior),
+               dplyr::select(donor,health_poor,health_satisfactory, health_very_good, health_excellent, health_outcome,health_outcome_neg,smoking_behavior),
              by = "donor")
 
 ```
@@ -311,7 +314,7 @@ regression_data_post_menop_women <-
   dplyr::select(-value) %>% 
   spread(key = key, value = value_scale) %>% 
   inner_join(regression_data %>% 
-               dplyr::select(donor, health_very_good, health_excellent, health_outcome,health_outcome_neg,smoking_behavior),
+               dplyr::select(donor, health_poor,health_satisfactory,health_very_good, health_excellent, health_outcome,health_outcome_neg,smoking_behavior),
              by = "donor")
 
 ```
@@ -379,7 +382,7 @@ regression_data_men <-
   dplyr::select(-value) %>% 
   spread(key = key, value = value_scale) %>% 
   inner_join(regression_data %>% 
-               dplyr::select(donor, health_outcome, health_very_good, health_excellent,health_outcome_neg,smoking_behavior),
+               dplyr::select(donor, health_poor,health_satisfactory, health_very_good, health_excellent,health_outcome,health_outcome_neg,smoking_behavior),
              by = "donor")
 ```
 
@@ -603,6 +606,9 @@ bootstrap_Bca_CI <-
       TRUE ~ "Men"),
     group = ordered(group, levels = c(  "Pre-menopausal women",  "Post-menopausal women", "Men"  ) ))
 
+file <- "../results/hyp_bootstrap_Bca_CI.csv"
+temp <- bootstrap_Bca_CI %>% mutate_if(is.numeric, round, digits = 3) %>% dplyr::select(regressor,group,p.value,OR,Bca_inf,Bca_sup) %>% arrange(desc(regressor),group)
+write.csv(temp ,file = file,row.names = FALSE)
 
 ```
 
@@ -692,7 +698,7 @@ fig.height=13
 
 ## Initial hemoglobin (g/l)
 ```{r}
-phb <- final_data %>% 
+phbd <- final_data %>% 
   dplyr::select(donor, group, health, questionnaire) %>% 
   drop_na(group) %>% 
   filter( group != "Women_pre_menop_no_mens") %>% 
@@ -701,12 +707,14 @@ phb <- final_data %>%
   mutate(Difference = case_when(First < Second ~ "Improved",
                                 First == Second ~ "Stable",
                                 TRUE ~ "Worsened")) %>% 
+    mutate(Difference = ordered(Difference,levels=c("Worsened","Stable","Improved"))) %>% 
   inner_join(FD_activity_biomarker_data, by = c("donor", "group")) %>% 
   mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
                            group == "Post_menopause_women" ~ "Post-menopausal \n women",
                            TRUE ~ "Men"),
-         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
-  ggplot(aes(x = Difference, y = Hb_v, color = group)) +
+         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") ))
+
+phb <-  ggplot(phbd,aes(x = Difference, y = Hb_v, color = group)) +
   # geom_hline(yintercept = 15, color = "red", linetype = 3) +
   geom_boxplot(outlier.alpha = 0) +
   geom_beeswarm(alpha = 0.5, shape = 1) +
@@ -728,13 +736,17 @@ ggplot2::ggsave(plot=phb,filename = "../results/figures/hyp_hb.pdf",
 
 phb
 ```
+```{r}
+phbd %>% group_by(group, Difference) %>% summarise(mean=mean(Hb_v),median=median(Hb_v))
+
+```
 
 
 
 
 ## Initial ferritin
 ```{r}
-pfer <- final_data %>% 
+pferd <- final_data %>% 
   dplyr::select(donor, group, health, questionnaire) %>% 
   drop_na(group) %>% 
   filter( group != "Women_pre_menop_no_mens") %>% 
@@ -743,12 +755,14 @@ pfer <- final_data %>%
   mutate(Difference = case_when(First < Second ~ "Improved",
                                 First == Second ~ "Stable",
                                 TRUE ~ "Worsened")) %>% 
+    mutate(Difference = ordered(Difference,levels=c("Worsened","Stable","Improved"))) %>% 
   inner_join(FD_activity_biomarker_data, by = c("donor", "group")) %>% 
   mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
                            group == "Post_menopause_women" ~ "Post-menopausal \n women",
                            TRUE ~ "Men"),
-         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
-  ggplot(aes(x = Difference, y = Ferritin_beginning, color = group)) +
+         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") ))
+  
+pfer <-  ggplot(pferd, aes(x = Difference, y = Ferritin_beginning, color = group)) +
   # geom_hline(yintercept = 15, color = "red", linetype = 3) +
   geom_boxplot(outlier.alpha = 0) +
   geom_beeswarm(alpha = 0.5, shape = 1) +
@@ -772,12 +786,16 @@ ggplot2::ggsave(plot=pfer,filename = "../results/figures/hyp_ferritin.pdf",
 
 pfer
 ```
+```{r}
+pferd %>% group_by(group, Difference) %>% summarise(mean=mean(Ferritin_beginning),median=median(Ferritin_beginning))
+
+```
 
 
 
 ## BMI difference
 ```{r}
-pbm <- final_data %>% 
+pbmd <- final_data %>% 
   dplyr::select(donor, group, health, questionnaire) %>% 
   drop_na(group) %>% 
   filter( group != "Women_pre_menop_no_mens") %>% 
@@ -785,13 +803,15 @@ pbm <- final_data %>%
   filter(First != "NA" & Second != "NA") %>%  
   mutate(Difference = case_when(First < Second ~ "Improved",
                                 First == Second ~ "Stable",
-                                TRUE ~ "Worsened")) %>% 
+                                TRUE ~ "Worsened")) %>%
+  mutate(Difference = ordered(Difference,levels=c("Worsened","Stable","Improved"))) %>% 
   inner_join(FD_activity_biomarker_data, by = c("donor", "group")) %>% 
   mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
                            group == "Post_menopause_women" ~ "Post-menopausal \n women",
                            TRUE ~ "Men"),
-         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
-  ggplot(aes(x = Difference, y = BMI_diff, color = group)) +
+         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") ))
+
+pbm <-  ggplot(pbmd, aes(x = Difference, y = BMI_diff, color = group)) +
   # geom_hline(yintercept = 15, color = "red", linetype = 3) +
   geom_boxplot(outlier.alpha = 0) +
   geom_beeswarm(alpha = 0.5, shape = 1) +
@@ -815,11 +835,15 @@ ggplot2::ggsave(plot=pbm,filename = "../results/figures/hyp_bmi_diff.pdf",
 
 pbm
 ```
+```{r}
+pbmd %>% group_by(group, Difference) %>% summarise(mean=mean(BMI_diff),median=median(BMI_diff))
+
+```
 
 
 ## Donation frequency
 ```{r}
-pfq <- final_data %>% 
+pfqd <- final_data %>% 
   dplyr::select(donor, group, health, questionnaire) %>% 
   drop_na(group) %>% 
   filter( group != "Women_pre_menop_no_mens") %>% 
@@ -828,12 +852,13 @@ pfq <- final_data %>%
   mutate(Difference = case_when(First < Second ~ "Improved",
                                 First == Second ~ "Stable",
                                 TRUE ~ "Worsened")) %>% 
+    mutate(Difference = ordered(Difference,levels=c("Worsened","Stable","Improved"))) %>% 
   inner_join(FD_activity_biomarker_data, by = c("donor", "group")) %>% 
   mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
                            group == "Post_menopause_women" ~ "Post-menopausal \n women",
                            TRUE ~ "Men"),
-         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
-  ggplot(aes(x = Difference, y = nb_donations_between_questionnaires, color = group)) +
+         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) 
+pfq <-  ggplot(pfqd, aes(x = Difference, y = nb_donations_between_questionnaires, color = group)) +
   # geom_hline(yintercept = 15, color = "red", linetype = 3) +
   geom_boxplot(outlier.alpha = 0) +
   geom_beeswarm(alpha = 0.5, shape = 1) +
@@ -857,12 +882,16 @@ ggplot2::ggsave(plot=pfq,filename = "../results/figures/hyp_n_donations.pdf",
 
 pfq
 ```
+```{r}
+pfqd %>% group_by(group, Difference) %>% summarise(mean=mean(nb_donations_between_questionnaires),median=median(nb_donations_between_questionnaires))
+
+```
 
 
 
 ## Inital weigth
 ```{r}
-pwe <- final_data %>% 
+pwed <- final_data %>% 
   dplyr::select(donor, group, health, questionnaire) %>% 
   drop_na(group) %>% 
   filter( group != "Women_pre_menop_no_mens") %>% 
@@ -871,12 +900,13 @@ pwe <- final_data %>%
   mutate(Difference = case_when(First < Second ~ "Improved",
                                 First == Second ~ "Stable",
                                 TRUE ~ "Worsened")) %>% 
+    mutate(Difference = ordered(Difference,levels=c("Worsened","Stable","Improved"))) %>% 
   inner_join(FD_activity_biomarker_data, by = c("donor", "group")) %>% 
   mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
                            group == "Post_menopause_women" ~ "Post-menopausal \n women",
                            TRUE ~ "Men"),
-         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) %>% 
-  ggplot(aes(x = Difference, y = starting_weight, color = group)) +
+         group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) 
+pwe <-  ggplot(pwed, aes(x = Difference, y = starting_weight, color = group)) +
   # geom_hline(yintercept = 15, color = "red", linetype = 3) +
   geom_boxplot(outlier.alpha = 0) +
   geom_beeswarm(alpha = 0.5, shape = 1) +
@@ -898,8 +928,12 @@ ggplot2::ggsave(plot=pwe,filename = "../results/figures/hyp_weight.pdf",
        dpi = 600,
        units = "cm")
 
-pfq
+pwe
 ```
 
 
+```{r}
+pwed %>% group_by(group, Difference) %>% summarise(mean=mean(starting_weight),median=median(starting_weight))
+
+```
 

@@ -5,6 +5,9 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
+
+-reparametrisoi poor-satisfactory improved health malli
+
 ```{r setup, include=FALSE}
 Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
 Sys.setenv(LANG = "en_US.UTF-8")
@@ -59,9 +62,9 @@ regression_data_pre_menop_women <- inner_join(changedata,reg_data$womenpre,by=c(
 
 
 #Later in this script we find that smoking behaviour can not be fitted so they are dropped now not to loose data over them. 
-regression_data_men <- regression_data_men %>%  dplyr::select(-smoking_behavior,-health_outcome)
-regression_data_post_menop_women <- regression_data_post_menop_women %>% dplyr::select(-smoking_behavior,-health_outcome)
-regression_data_pre_menop_women <- regression_data_pre_menop_women %>%  dplyr::select(-smoking_behavior,-health_outcome)
+regression_data_men <- regression_data_men %>%  dplyr::select(-smoking_behavior,-health_outcome,-health_very_good,-health_excellent)
+regression_data_post_menop_women <- regression_data_post_menop_women %>% dplyr::select(-smoking_behavior,-health_outcome,-health_very_good,-health_excellent)
+regression_data_pre_menop_women <- regression_data_pre_menop_women %>%  dplyr::select(-smoking_behavior,-health_outcome,-health_very_good,-health_excellent)
 #Rename health_outcome_neg to analyse what affects improved health. The rest should be exactly the same as in explorative_analysis.Rmd 
 regression_data_men <- regression_data_men %>%  rename(health_outcome = health_outcome_neg)
 regression_data_post_menop_women <- regression_data_post_menop_women %>% rename(health_outcome = health_outcome_neg)
@@ -109,8 +112,8 @@ All explenatory variables selected in inital_data_analysis.Rmd were tried,  but 
 logit_pre_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
                                log_Ferritin_beginning + Hb_beginning +
                               donation_frequency + 
-                               health_very_good + 
-#                               health_excellent + # separation exists among the sample points.
+#                               health_poor + #no variation
+#                               health_satisfactory + # separation exists among the sample points.
                                cholesterol_d + 
                               blood_sugar_d +
                                HBP_d +
@@ -186,8 +189,9 @@ There are no cases who aquired high Hb during the research period. high_hb_hist_
 ```{r}
 logit_post_menop_women <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
                                log_Ferritin_beginning + Hb_beginning +
-                              donation_frequency + health_very_good + 
-                              #  health_excellent # separation exists among the sample points.
+                              donation_frequency + 
+                                #health_poor + #no variation
+                                health_satisfactory + # separation exists among the sample points.
                               #  cholesterol_d + # separation exists among the sample points.
                               # # blood_sugar_d + # Separation exists among the sample points.
                                 HBP_d + 
@@ -264,8 +268,9 @@ There are 2 cases who aquired high Hb during the research period and it was not 
 ```{r}
 logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
                                log_Ferritin_beginning + Hb_beginning +
-                              donation_frequency + health_very_good  +
-                    #          health_excellent + # separation exists among the sample points.
+                              donation_frequency + 
+                    #          health_poor  + #no variation
+                              health_satisfactory + # separation exists among the sample points.
                               cholesterol_d + 
                                 blood_sugar_d + 
                                 HBP_d + 
@@ -418,7 +423,9 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
      
     if (current_group == "Men") {
       test_data_std <- inner_join(test_data_std,regression_data %>% 
-                                    dplyr::select(donor, health_outcome, health_very_good, health_excellent,
+                                    dplyr::select(donor, health_outcome, 
+                                                #  health_poor, 
+                                                 health_satisfactory,
                                                 #  sleep_night_d, ##Error in t.star[r, ] <- res[[r]] :
                                                   cholesterol_d,
                                                   blood_sugar_d,
@@ -457,7 +464,9 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
     
     if (current_group == "Pre_menopause_women") {
       test_data_std <- inner_join(test_data_std,regression_data %>% 
-                                    dplyr::select(donor, health_outcome, health_very_good, health_excellent,
+                                    dplyr::select(donor, health_outcome,
+                                                  #  health_poor, 
+                                                 #health_satisfactory,
                                                 #  sleep_night_d, #Error in t.star[r, ] <- res[[r]] :
                                                   cholesterol_d,
                                                   blood_sugar_d,
@@ -496,7 +505,9 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
     
       if (current_group == "Post_menopause_women") {
       test_data_std <- inner_join(test_data_std,regression_data %>% 
-                                    dplyr::select(donor, health_outcome, health_very_good, health_excellent,
+                                    dplyr::select(donor, health_outcome, 
+                                                  #  health_poor, 
+                                                 health_satisfactory,
                                                 #  sleep_night_d, #Error in t.star[r, ] <- res[[r]] :
                                                  cholesterol_d,
                                                  blood_sugar_d,
@@ -624,8 +635,7 @@ regressor_values <- c(
    "Hb_beginning" = "Initial Hemoglobin",
    "log_Ferritin_beginning" ="Initial Ferritin",
    "starting_weight" ="Initial weight",
-   "health_very_good" ="Initial health rating \n Very good vs Satisfactory/Good",
-    "health_excellent" = "Initial health rating \n Excellent vs Satisfactory/Good",
+   "health_satisfactory" ="Initial health rating \n satisfactory vs Good/Very good/Excellent",
  "cholesterol_dTRUE" = "Elevated cholesterol detected",
 "blood_sugar_dTRUE" = "Elevated blood sugar detected", 
 "HBP_dTRUE" = "High blood pressure detected",
@@ -790,7 +800,7 @@ p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plot
   # geom_violin(alpha = 0.15, trim = TRUE, position = position_dodge(width = 0.8), size = 0.1) +
   geom_pointrange(data = bootstrap_Bca_CI_filtered,
                   aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
-                  position = position_dodge(width = 0.7), size = 1, linetype = 2) +
+                  position = position_dodge(width = 0.7), size = 1, linetype = 1) +
   # geom_pointrange(data = bootstrap_Bca_CI_filtered_2,
   #                 aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
   #                 position = position_dodge(width = 0.7), size = pointrange2size) +
@@ -877,7 +887,7 @@ p2  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plo
                   position = position_dodge(width = 0.7), size = 1, linetype = 2) +
   geom_pointrange(data = bootstrap_Bca_CI_2,
                   aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
-                  position = position_dodge(width = 0.7), size = pointrange2size) +
+                  position = position_dodge(width = 0.7), size = pointrange2size, linetype = 1) +
   # # geom_point(data = bootstrap_Bca_CI, 
   #            aes(shape = is_sig, fill = group),
   #            position = position_dodge(width = 0.8), size = 2) +
@@ -934,7 +944,7 @@ p2 <- p2 +   labs(title = NULL,subtitle = NULL)
 ggplot2::ggsave(filename = "../results/figures/exp_imp_big_log_reg_results_b.pdf",
                 plot= p2,
        width = 35,
-       height = 45,
+       height = 55,
        dpi = "print",
        units = "cm")
 

@@ -5,11 +5,6 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
--make OR tables
--count group mean averages for hyp model variables
--add the units and 5/ etc. transfromations into plots
-
-+ from email things elina found
 
 ```{r setup, include=FALSE}
 Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
@@ -807,7 +802,6 @@ temp2 <-
 
 ```{r}
 bootstrap_Bca_CI <- temp
-# "\U0394 BMI"
 plotdata <- bootstrap_distrib %>% 
   mutate(regressor = plyr::revalue(regressor, regressor_values),
   regressor = ordered(regressor,
@@ -820,18 +814,10 @@ plotdata <- bootstrap_distrib %>%
   mutate(OR = exp(coefficient))
 
 bootstrap_Bca_CI_2 <- temp2
-# "\U0394 BMI"
-plotdata <- bootstrap_distrib %>% 
-  mutate(regressor = plyr::revalue(regressor, regressor_values),
-  regressor = ordered(regressor,
-                  levels = as.character(regressor_values)),
-  regressor = fct_rev(regressor),
-  group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal women",
-    group == "Post_menopause_women" ~ "Post-menopausal women",
-    TRUE ~ "Men"),
-  group = ordered(group, levels = c( "Men",  "Post-menopausal women", "Pre-menopausal women" ) )) %>% 
-  mutate(OR = exp(coefficient))
 
+file <- "../results/exp_bootstrap_Bca_CI.csv"
+temp <- bootstrap_Bca_CI %>% mutate_if(is.numeric, round, digits = 3) %>% dplyr::select(regressor,group,p.value,OR,Bca_inf,Bca_sup) %>% arrange(desc(regressor),group)
+write.csv(temp ,file = file,row.names = FALSE)
 
 ```
 
@@ -940,9 +926,6 @@ bootstrap_Bca_CI_2$Bca_sup[bootstrap_Bca_CI_2$Bca_sup == 0] <- orlimR
 bootstrap_Bca_CI_2$Bca_inf[bootstrap_Bca_CI_2$Bca_inf < orlimL] <- orlimL
 
 
-#plotdata_filtered <- plotdata %>% filter(plotdata$regressor %in% bootstrap_Bca_CI_filtered$regressor) 
-
-
 p2  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plotdata) +
   geom_hline(yintercept = 1 , color = "grey", linetype = "dotted",
              size = 1) +
@@ -1003,7 +986,7 @@ p2 <- p2 +   labs(title = NULL,subtitle = NULL)
 ggplot2::ggsave(filename = "../results/figures/exp_big_log_reg_results_b.pdf",
                 plot= p2,
        width = 35,
-       height = 45,
+       height = 55,
        dpi = 600,
        units = "cm")
 
