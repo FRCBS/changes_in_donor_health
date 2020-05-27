@@ -84,7 +84,7 @@ o <- regression_data_pre_menop_women %>% mutate(group = "Pre_menopause_women")
 temp <- bind_rows(m,e,o) %>%  dplyr::select(-age,-BMI_diff,-donation_frequency,-Hb_beginning,-log_Ferritin_beginning,-starting_weight)
 file <- "../results/hypregdata_unscaled.rdata"
 load(file=file)
-regression_data <- regression_data %>% dplyr::select(age,BMI_diff,donation_frequency,Hb_beginning,log_Ferritin_beginning,starting_weight,donor) %>% inner_join(temp,by=c("donor"="donor")) #%>% select(-anemia_hist_d,-high_hb_hist_d,-education,-smoking_behavior)
+regression_data <- regression_data %>% dplyr::select(age,BMI_diff,donation_frequency,Hb_beginning,log_Ferritin_beginning, Ferritin_beginning,starting_weight,donor) %>% inner_join(temp,by=c("donor"="donor")) #%>% select(-anemia_hist_d,-high_hb_hist_d,-education,-smoking_behavior)
 regression_data %>% group_by(group) %>% count()
 
 ```
@@ -106,13 +106,15 @@ table1data <- regression_data %>% ungroup() %>% dplyr::select(#-age,
   -health_excellent,
   -high_hb_hist_d,
   -health_outcome,
-  -donor
+  -donor,
   #-high_hb_hist_d,
   #-sleep_night_d,
   #-vita_iron_d,
   #-ment_inf_d,
   #-education,
   #-smoking_behavior
+  -health_poor,
+  -health_satisfactory
 ) %>% mutate(
   starting_weight=starting_weight*5,
   log_Ferritin_beginning= exp((log(log_Ferritin_beginning)/log(2)) * log(2)),
@@ -123,7 +125,7 @@ table1data <- regression_data %>% ungroup() %>% dplyr::select(#-age,
     "Full time employed" = "employment",
     "Inital weight (kg)" =starting_weight,
     "BMI difference (second - first)"=BMI_diff,
-    "Initial ferritin (ug/l)"=log_Ferritin_beginning,
+    "Initial ferritin (ug/l)"=Ferritin_beginning,
     "Initial hemoglobin (g/l)" =Hb_beginning,
     "Donation frequency (yearly)"=donation_frequency,
     "Anemia detected"=anemia_hist_d,
@@ -150,7 +152,7 @@ table1data <- regression_data %>% ungroup() %>% dplyr::select(#-age,
     "Enough sleep" = "sleep_enough_d",
     "Tired during day" = "sleep_tired_d",
     "Frequency of feeling calm" = "freq_calm_d",
-    "Life quality" = "life_qual"
+    "Quality of life" = "life_qual"
   )
 
 myVars<- colnames(table1data %>% dplyr::select(-group))
@@ -740,8 +742,8 @@ regressor_values <- c(
 "sleep_tired_dIncreased" = "Tired during day increased",
 "freq_calm_dStable" = "Frequency of feeling calm stable",
 "freq_calm_dIncreased" =  "Frequency of feeling calm increase",
-"life_qualgood" = "Life quality good",
-"life_qualvery_good" = "Life quality very good",
+"life_qualgood" = "Quality of life good",
+"life_qualvery_good" = "Quality of life very good",
 "employmentTRUE" = "Full time employed"
 )
 ```
@@ -1053,7 +1055,7 @@ p
 
 
 
-## Life quality 
+## Quality of life
 ```{r}
 
 p <- ggplot(aes(x= life_qual), data=pdata) +
@@ -1081,4 +1083,99 @@ ggplot2::ggsave(plot=p,filename = "../results/figures/exp_life_qual_c.pdf",
 p
 ```
 
+## Plot ferritin and donation frequency 
 
+```{r}
+pdata <- pdata %>% mutate(ferritin =  Ferritin_beginning  )
+p <- ggplot(aes(y= ferritin, x = donation_frequency), data=pdata) +
+  # geom_hline(yintercept = 15, color = "red", linetype = 3)
+  geom_point(aes(color=group))+
+  
+  #geom_boxplot(outlier.alpha = 0) +
+  #geom_beeswarm(alpha = 0.5, shape = 1) +
+  scale_y_log10() +
+  facet_grid(group ~ phys_cond_d,scales="free") +
+  theme_bw() +
+  theme(legend.position = "none") +
+#  ggtitle("Evolution of self-rated health")+
+  xlab("Donation frequency") +
+  ylab("Ferritin (ug/l)") +
+  #geom_text(stat='count', aes(label=..count..),color="black", vjust=1) +
+  geom_smooth(method = "lm") +
+#  geom_smooth(method = "loess") +
+  scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
+                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" ))
+
+ggplot2::ggsave(plot=p,filename = "../results/figures/fer_donfreq_physd.pdf",
+       width = fig.width,
+       height = fig.height,
+       dpi = 600,
+       units = "cm")
+
+p
+
+```
+
+
+```{r}
+pdata <- pdata %>% mutate(ferritin =  Ferritin_beginning  )
+p <- ggplot(aes(y= ferritin, x = donation_frequency), data=pdata) +
+  # geom_hline(yintercept = 15, color = "red", linetype = 3)
+  geom_point(aes(color=group))+
+  
+  #geom_boxplot(outlier.alpha = 0) +
+  #geom_beeswarm(alpha = 0.5, shape = 1) +
+  scale_y_log10() +
+  facet_grid(group ~ Difference,scales="free") +
+  theme_bw() +
+  theme(legend.position = "none") +
+#  ggtitle("Evolution of self-rated health")+
+  xlab("Donation frequency") +
+  ylab("Ferritin (ug/l)") +
+  #geom_text(stat='count', aes(label=..count..),color="black", vjust=1) +
+  geom_smooth(method = "lm") +
+#  geom_smooth(method = "loess") +
+  scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
+                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" ))
+
+ggplot2::ggsave(plot=p,filename = "../results/figures/fer_donfreq_health.pdf",
+       width = fig.width,
+       height = fig.height,
+       dpi = 600,
+       units = "cm")
+
+p
+
+```
+
+
+```{r}
+pdata <- pdata %>% mutate(ferritin =  Ferritin_beginning  )
+p <- ggplot(aes(y= ferritin, x = donation_frequency,color=group), data=pdata) +
+  # geom_hline(yintercept = 15, color = "red", linetype = 3)
+  geom_point()+
+  
+  #geom_boxplot(outlier.alpha = 0) +
+  #geom_beeswarm(alpha = 0.5, shape = 1) +
+  scale_y_log10() +
+  facet_grid(Difference ~ phys_cond_d,scales="free") +
+  theme_bw() +
+  theme(legend.position = "none") +
+#  ggtitle("Evolution of self-rated health")+
+  xlab("Donation frequency") +
+  ylab("Ferritin (ug/l)") +
+  #geom_text(stat='count', aes(label=..count..),color="black", vjust=1) +
+  geom_smooth(method = "lm") +
+#  geom_smooth(method = "loess") +
+  scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
+                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" ))
+
+ggplot2::ggsave(plot=p,filename = "../results/figures/fer_donfreq_phys_d_health.pdf",
+       width = fig.width,
+       height = fig.height,
+       dpi = 600,
+       units = "cm")
+
+p
+
+```

@@ -5,6 +5,13 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
+> summary(regression_data$BMI_diff
++ )
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+-9.3499 -0.3165  0.3156  0.4653  1.0767  8.9844 
+
+This needs to be looked at in the original pre_IDA stage
+
 ```{r setup, include=FALSE}
 #echo "rmarkdown::render('hypothesis_regressions.Rmd', clean=TRUE,output_format='html_document',output_file='../results/hypothesis_regressions.html')" | R --slave
 knitr::opts_chunk$set(
@@ -692,7 +699,7 @@ ggplot2::ggsave(filename = "../results/figures/hyp_log_reg_results_b.pdf",
 
 ```{r}
 fig.width=15
-fig.height=13
+fig.height=17
 ```
 
 
