@@ -5,12 +5,10 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
-> summary(regression_data$BMI_diff
-+ )
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
--9.3499 -0.3165  0.3156  0.4653  1.0767  8.9844 
 
-This needs to be looked at in the original pre_IDA stage
+reduced -> decreased!
+
+maybe outlier filtering to univariate pics!?
 
 ```{r setup, include=FALSE}
 #echo "rmarkdown::render('hypothesis_regressions.Rmd', clean=TRUE,output_format='html_document',output_file='../results/hypothesis_regressions.html')" | R --slave

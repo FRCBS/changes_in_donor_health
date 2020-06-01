@@ -46,7 +46,6 @@ data %>% group_by(questionnaire,group)  %>%  count()
 
 ```{r}
 data <- data %>% filter(group != 'Women_pre_menop_no_mens')
-data %>% group_by(questionnaire) %>% count()
 ```
 
 Here are the questions we are processing. See further details from https://onlinelibrary.wiley.com/action/downloadSupplement?doi=10.1111%2Fvox.12856&file=vox12856-sup-0002-SupInfo2.pdf  
@@ -270,12 +269,16 @@ diag(p.mat) <- 1
 ```
 
 
-```{r}
-corrplot(cormat,type="lower",order="hclust",p.mat=p.mat,sig.level = 0.05,insig = "label_sig",pch.col = 'red',pch.cex = 1)
+```{r , fig.width = 12}
+corrplot(cormat,type="lower",order="hclust",p.mat=p.mat,sig.level = 0.05,insig = "label_sig",pch.col = 'red',pch.cex = 1,mar = c(1, 1, 4, 1),xpd=TRUE,tl.cex=0.7)
+
+pdf("../results/figures/IDAcorrplotFull.pdf",width = 10,height = 10)
+corrplot(cormat,type="lower",order="hclust",p.mat=p.mat,sig.level = 0.05,insig = "label_sig",pch.col = 'red',pch.cex = 1,mar = c(1, 1, 4, 1),xpd=TRUE,tl.cex=0.7)
+dev.off()
 ```
 
 Extract those with correlation above 0.5.
-```{r}
+```{r fig.width = 12}
 #take anything with at least 0.5 correlation
 any_above <- function(x){any(x > 0.5) }
 temp <-cormat
@@ -288,8 +291,12 @@ temp <- temp[apply(temp,1, any_above),apply(temp,2, any_above)]
 
 
 
+corrplot(temp,type="lower",order="hclust",p.mat=temp2,sig.level = 0.05,insig = "label_sig",pch.col = 'red',pch.cex = 1.5,mar = c(1, 1, 4, 1),xpd=TRUE,tl.cex=1 )
 
-corrplot(temp,type="lower",order="hclust",p.mat=temp2,sig.level = 0.05,insig = "label_sig",pch.col = 'red',pch.cex = 1)
+pdf("../results/figures/IDAcorrplotFiltered.pdf",width = 8,height = 8)
+corrplot(temp,type="lower",order="hclust",p.mat=temp2,sig.level = 0.05,insig = "label_sig",pch.col = 'red',pch.cex = 1.5,mar = c(1, 1, 4, 1),xpd=TRUE,tl.cex=1 )
+dev.off()
+
 ```
 
 #Choose what to keep
@@ -627,9 +634,9 @@ iron_supp recoded as either reducing, stable or increasing.
 
 ```{r}
 temp <- temp %>% mutate(iron_supp_d = case_when(iron_supp == FALSE & iron_supp_2 == TRUE ~ "Increased",
-                                                iron_supp == TRUE & iron_supp_2 == FALSE ~ "Reduced",
+                                                iron_supp == TRUE & iron_supp_2 == FALSE ~ "Decreased",
                                           TRUE ~ "Stable"
-                                          )) %>% mutate( iron_supp_d= factor(iron_supp_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+                                          )) %>% mutate( iron_supp_d= factor(iron_supp_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 ```
 
@@ -650,65 +657,65 @@ These are all ordered factors. They are recoded as  either reducing, stable or i
 temp <- temp %>% mutate(freq_calm_d = as.numeric(freq_calm_2)  - as.numeric(freq_calm)) %>% 
   mutate(freq_calm_d = case_when(
     freq_calm_d > 0 ~ "Increased",
-    freq_calm_d < 0 ~ "Reduced",
+    freq_calm_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( freq_calm_d= factor(freq_calm_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( freq_calm_d= factor(freq_calm_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 temp <- temp %>% mutate(freq_red_meat_d = as.numeric(freq_red_meat_2)  - as.numeric(freq_red_meat)) %>% 
   mutate(freq_red_meat_d = case_when(
     freq_red_meat_d > 0 ~ "Increased",
-    freq_red_meat_d < 0 ~ "Reduced",
+    freq_red_meat_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( freq_red_meat_d= factor(freq_red_meat_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( freq_red_meat_d= factor(freq_red_meat_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 temp <- temp %>% mutate(freq_fruits_d = as.numeric(freq_fruits_2)  - as.numeric(freq_fruits)) %>% 
   mutate(freq_fruits_d = case_when(
     freq_fruits_d > 0 ~ "Increased",
-    freq_fruits_d < 0 ~ "Reduced",
+    freq_fruits_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( freq_fruits_d= factor(freq_fruits_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( freq_fruits_d= factor(freq_fruits_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 temp <- temp %>% mutate(freq_juices_d = as.numeric(freq_juices_2)  - as.numeric(freq_juices)) %>% 
   mutate(freq_juices_d = case_when(
     freq_juices_d > 0 ~ "Increased",
-    freq_juices_d < 0 ~ "Reduced",
+    freq_juices_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( freq_juices_d= factor(freq_juices_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( freq_juices_d= factor(freq_juices_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 temp <- temp %>% mutate(freq_wholem_d = as.numeric(freq_wholem_2)  - as.numeric(freq_wholem)) %>% 
   mutate(freq_wholem_d = case_when(
     freq_wholem_d > 0 ~ "Increased",
-    freq_wholem_d < 0 ~ "Reduced",
+    freq_wholem_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( freq_wholem_d= factor(freq_wholem_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( freq_wholem_d= factor(freq_wholem_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 temp <- temp %>% mutate(freq_milk_d = as.numeric(freq_milk_2)  - as.numeric(freq_milk)) %>% 
   mutate(freq_milk_d = case_when(
     freq_milk_d > 0 ~ "Increased",
-    freq_milk_d < 0 ~ "Reduced",
+    freq_milk_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( freq_milk_d= factor(freq_milk_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( freq_milk_d= factor(freq_milk_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 temp <- temp %>% mutate(freq_cof_d = as.numeric(freq_cof_2)  - as.numeric(freq_cof)) %>% 
   mutate(freq_cof_d = case_when(
     freq_cof_d > 0 ~ "Increased",
-    freq_cof_d < 0 ~ "Reduced",
+    freq_cof_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( freq_cof_d= factor(freq_cof_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( freq_cof_d= factor(freq_cof_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 temp <- temp %>% mutate(freq_tea_d = as.numeric(freq_tea_2)  - as.numeric(freq_tea)) %>% 
   mutate(freq_tea_d = case_when(
     freq_tea_d > 0 ~ "Increased",
-    freq_tea_d < 0 ~ "Reduced",
+    freq_tea_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( freq_tea_d= factor(freq_tea_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( freq_tea_d= factor(freq_tea_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 temp <- temp %>% mutate(phys_cond_d = as.numeric(phys_cond_2)  - as.numeric(phys_cond)) %>% 
   mutate(phys_cond_d = case_when(
     phys_cond_d > 0 ~ "Increased",
-    phys_cond_d < 0 ~ "Reduced",
+    phys_cond_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( phys_cond_d= factor(phys_cond_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( phys_cond_d= factor(phys_cond_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 ```
 
@@ -725,56 +732,56 @@ These are all ordered factors. They are recoded as  either reducing, stable or i
 temp <- temp %>% mutate(act_heavy_d = as.numeric(act_heavy_2)  - as.numeric(act_heavy)) %>% 
   mutate(act_heavy_d = case_when(
     act_heavy_d > 0 ~ "Increased",
-    act_heavy_d < 0 ~ "Reduced",
+    act_heavy_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( act_heavy_d= factor(act_heavy_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( act_heavy_d= factor(act_heavy_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 #sleep_enough
 temp <- temp %>% mutate(sleep_enough_d = as.numeric(sleep_enough_2)  - as.numeric(sleep_enough)) %>% 
   mutate(sleep_enough_d = case_when(
     sleep_enough_d > 0 ~ "Increased",
-    sleep_enough_d < 0 ~ "Reduced",
+    sleep_enough_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( sleep_enough_d= factor(sleep_enough_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( sleep_enough_d= factor(sleep_enough_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 #day_act
 temp <- temp %>% mutate(day_act_d = as.numeric(day_act_2)  - as.numeric(day_act)) %>% 
   mutate(day_act_d = case_when(
     day_act_d > 0 ~ "Increased",
-    day_act_d < 0 ~ "Reduced",
+    day_act_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( day_act_d= factor(day_act_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( day_act_d= factor(day_act_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 #h_act_light
 temp <- temp %>% mutate(h_act_light_d = as.numeric(h_act_light_2)  - as.numeric(h_act_light)) %>% 
   mutate(h_act_light_d = case_when(
     h_act_light_d > 0 ~ "Increased",
-    h_act_light_d < 0 ~ "Reduced",
+    h_act_light_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( h_act_light_d= factor(h_act_light_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( h_act_light_d= factor(h_act_light_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 #vita_multi
 temp <- temp %>% mutate(vita_multi_d = as.numeric(vita_multi_2)  - as.numeric(vita_multi)) %>% 
   mutate(vita_multi_d = case_when(
     vita_multi_d > 0 ~ "Increased",
-    vita_multi_d < 0 ~ "Reduced",
+    vita_multi_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( vita_multi_d= factor(vita_multi_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( vita_multi_d= factor(vita_multi_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 # Later in explorative_analysis.Rmd we find out that some variables cannot be fitted. We remove them now not to loose data over them
 #vita_iron
 # temp <- temp %>% mutate(vita_iron_d = as.numeric(vita_iron_2)  - as.numeric(vita_iron)) %>% 
 #   mutate(vita_iron_d = case_when(
 #     vita_iron_d > 0 ~ "Increased",
-#     vita_iron_d < 0 ~ "Reduced",
+#     vita_iron_d < 0 ~ "Decreased",
 #     TRUE ~ "Stable"
-#   )) %>% mutate( vita_iron_d= factor(vita_iron_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+#   )) %>% mutate( vita_iron_d= factor(vita_iron_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 ```
 
 But these 2 are diffent order of time and they are turned around to have same reducing, stable or increasing coding.
 
-sleep_tired Levels: always_or_almost < mostly < rarely < never i.e. is their tiredness reduced, stable or increasing
+sleep_tired Levels: always_or_almost < mostly < rarely < never i.e. is their tiredness secreased, stable or increasing
 
 anti_inf: Levels: daily < not_daily < occasionally < none
 
@@ -782,16 +789,16 @@ anti_inf: Levels: daily < not_daily < occasionally < none
 temp <- temp %>% mutate(sleep_tired_d = as.numeric(sleep_tired)  - as.numeric(sleep_tired_2)) %>% 
   mutate(sleep_tired_d = case_when(
     sleep_tired_d > 0 ~ "Increased",
-    sleep_tired_d < 0 ~ "Reduced",
+    sleep_tired_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( sleep_tired_d= factor(sleep_tired_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( sleep_tired_d= factor(sleep_tired_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 temp <- temp %>% mutate(anti_inf_d = as.numeric(anti_inf)  - as.numeric(anti_inf_2)) %>% 
   mutate(anti_inf_d = case_when(
     anti_inf_d > 0 ~ "Increased",
-    anti_inf_d < 0 ~ "Reduced",
+    anti_inf_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( anti_inf_d= factor(anti_inf_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( anti_inf_d= factor(anti_inf_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 
 ```
@@ -809,17 +816,17 @@ ment_inf Levels: yes < don't know < no -> has your mental health inferred?
 temp <- temp %>% mutate(phys_inf_d = as.numeric(phys_inf)  - as.numeric(phys_inf_2)) %>% 
   mutate(phys_inf_d = case_when(
     phys_inf_d > 0 ~ "Increased",
-    phys_inf_d < 0 ~ "Reduced",
+    phys_inf_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( phys_inf_d= factor(phys_inf_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( phys_inf_d= factor(phys_inf_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 #Later in explorative_analysis.Rmd we find out that some variables cannot be fitted. We remove them now not to loose data over them
 # temp <- temp %>% mutate(ment_inf_d = as.numeric(ment_inf)  - as.numeric(ment_inf_2)) %>% 
 #   mutate(ment_inf_d = case_when(
 #     ment_inf_d > 0 ~ "Increased",
-#     ment_inf_d < 0 ~ "Reduced",
+#     ment_inf_d < 0 ~ "Decreased",
 #     TRUE ~ "Stable"
-#   )) %>% mutate( ment_inf_d= factor(ment_inf_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+#   )) %>% mutate( ment_inf_d= factor(ment_inf_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 
 ```
@@ -836,9 +843,9 @@ freq_alc Levels: daily_or_almost < a_few_per_week < a_few_per_month < very_rarel
 temp <- temp %>% mutate(freq_alc_d = as.numeric(freq_alc)  - as.numeric(freq_alc_2)) %>% 
   mutate(freq_alc_d = case_when(
     freq_alc_d > 0 ~ "Increased",
-    freq_alc_d < 0 ~ "Reduced",
+    freq_alc_d < 0 ~ "Decreased",
     TRUE ~ "Stable"
-  )) %>% mutate( freq_alc_d= factor(freq_alc_d,levels = c("Reduced","Stable","Increased"),ordered = TRUE))
+  )) %>% mutate( freq_alc_d= factor(freq_alc_d,levels = c("Decreased","Stable","Increased"),ordered = TRUE))
 
 ```
 
@@ -955,4 +962,4 @@ Just to check:
 changedata %>% count()
 ```
 
-By dropping many questions we manage to save several hundred donors. In addition, next in explorative_analysis.Rmd even couple more variables need to dropped out in order to fit the models. Hence, dropping related variables is required.
+By dropping many questions we manage to save several hundred donors. Hence, dropping related variables is required. In addition, next in explorative_analysis.Rmd even couple more further variables need to dropped out in order to fit the models. 
