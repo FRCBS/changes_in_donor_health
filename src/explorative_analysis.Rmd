@@ -243,7 +243,7 @@ tidy_logit_pre_menop_women <-
   tidy %>% 
   mutate(OR = exp(estimate),
          group = "Pre_menopause_women") %>% mutate(p.value = p.value * 2)
-#p-values are multiplied by 2 as we will make also second analysis for improved health with the same data set.
+#p-values are multiplied as we analyse the data twice
 ```
 
 
@@ -319,8 +319,7 @@ tidy_logit_post_menop_women <-
   tidy %>% 
   mutate(OR = exp(estimate),
          group = "Post_menopause_women") %>% mutate(p.value = p.value * 2)
-#p-values are multiplied by 2 as we will make also second analysis for improved health with the same data set.
-```
+#p-values are multiplied as we analyse the data twice```
 
 
 
@@ -330,7 +329,7 @@ tidy_logit_post_menop_women <-
 summary(regression_data_men)
 ```
 
-There are 2 cases who aquired high Hb during the research period and it was not used in models with women. high_hb_hist_d should be removed.
+There are only 2 cases who aquired high Hb during the research period and it was not used in models with women. high_hb_hist_d should be removed.
 
 ```{r}
 logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff + 
@@ -341,7 +340,7 @@ logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                HBP_d + 
                                low_hb_hist_d + 
                               # anemia_hist_d + # eparation exists among the sample points.
-                               high_hb_hist_d + 
+                              # high_hb_hist_d + 
                                iron_supp_d + 
                               # sleep_night_d + #fails in bootstrapping
                                freq_calm_d + 
@@ -399,15 +398,14 @@ tidy_logit_men <-
   tidy %>% 
   mutate(OR = exp(estimate),
          group = "Men") %>% mutate(p.value = p.value * 2)
-#p-values are multiplied by 2 as we will make also second analysis for improved health with the same data set.
-
-#https://data.princeton.edu/wws509/r/c3s1
-#https://stats.stackexchange.com/questions/304833/how-to-calculate-odds-ratio-and-95-confidence-interval-for-logistic-regression
-#https://www.andrewheiss.com/blog/2016/04/25/convert-logistic-regression-standard-errors-to-odds-ratios-with-r/
+#p-values are multiplied as we analyse the data twice
 ```
 
 
 # Bootstraps
+https://data.princeton.edu/wws509/r/c3s1
+https://stats.stackexchange.com/questions/304833/how-to-calculate-odds-ratio-and-95-confidence-interval-for-logistic-regression
+https://www.andrewheiss.com/blog/2016/04/25/convert-logistic-regression-standard-errors-to-odds-ratios-with-r/
 
 ```{r}
 detach("package:safeBinaryRegression", unload=TRUE)
@@ -1083,99 +1081,3 @@ ggplot2::ggsave(plot=p,filename = "../results/figures/exp_life_qual_c.pdf",
 p
 ```
 
-## Plot ferritin and donation frequency 
-
-```{r}
-pdata <- pdata %>% mutate(ferritin =  Ferritin_beginning  )
-p <- ggplot(aes(y= ferritin, x = donation_frequency), data=pdata) +
-  # geom_hline(yintercept = 15, color = "red", linetype = 3)
-  geom_point(aes(color=group))+
-  
-  #geom_boxplot(outlier.alpha = 0) +
-  #geom_beeswarm(alpha = 0.5, shape = 1) +
-  scale_y_log10() +
-  facet_grid(group ~ phys_cond_d,scales="free") +
-  theme_bw() +
-  theme(legend.position = "none") +
-#  ggtitle("Evolution of self-rated health")+
-  xlab("Donation frequency") +
-  ylab("Ferritin (ug/l)") +
-  #geom_text(stat='count', aes(label=..count..),color="black", vjust=1) +
-  geom_smooth(method = "lm") +
-#  geom_smooth(method = "loess") +
-  scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
-                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" ))
-
-ggplot2::ggsave(plot=p,filename = "../results/figures/fer_donfreq_physd.pdf",
-       width = fig.width,
-       height = fig.height,
-       dpi = 600,
-       units = "cm")
-
-p
-
-```
-
-
-```{r}
-pdata <- pdata %>% mutate(ferritin =  Ferritin_beginning  )
-p <- ggplot(aes(y= ferritin, x = donation_frequency), data=pdata) +
-  # geom_hline(yintercept = 15, color = "red", linetype = 3)
-  geom_point(aes(color=group))+
-  
-  #geom_boxplot(outlier.alpha = 0) +
-  #geom_beeswarm(alpha = 0.5, shape = 1) +
-  scale_y_log10() +
-  facet_grid(group ~ Difference,scales="free") +
-  theme_bw() +
-  theme(legend.position = "none") +
-#  ggtitle("Evolution of self-rated health")+
-  xlab("Donation frequency") +
-  ylab("Ferritin (ug/l)") +
-  #geom_text(stat='count', aes(label=..count..),color="black", vjust=1) +
-  geom_smooth(method = "lm") +
-#  geom_smooth(method = "loess") +
-  scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
-                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" ))
-
-ggplot2::ggsave(plot=p,filename = "../results/figures/fer_donfreq_health.pdf",
-       width = fig.width,
-       height = fig.height,
-       dpi = 600,
-       units = "cm")
-
-p
-
-```
-
-
-```{r}
-pdata <- pdata %>% mutate(ferritin =  Ferritin_beginning  )
-p <- ggplot(aes(y= ferritin, x = donation_frequency,color=group), data=pdata) +
-  # geom_hline(yintercept = 15, color = "red", linetype = 3)
-  geom_point()+
-  
-  #geom_boxplot(outlier.alpha = 0) +
-  #geom_beeswarm(alpha = 0.5, shape = 1) +
-  scale_y_log10() +
-  facet_grid(Difference ~ phys_cond_d,scales="free") +
-  theme_bw() +
-  theme(legend.position = "none") +
-#  ggtitle("Evolution of self-rated health")+
-  xlab("Donation frequency") +
-  ylab("Ferritin (ug/l)") +
-  #geom_text(stat='count', aes(label=..count..),color="black", vjust=1) +
-  geom_smooth(method = "lm") +
-#  geom_smooth(method = "loess") +
-  scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
-                     limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" ))
-
-ggplot2::ggsave(plot=p,filename = "../results/figures/fer_donfreq_phys_d_health.pdf",
-       width = fig.width,
-       height = fig.height,
-       dpi = 600,
-       units = "cm")
-
-p
-
-```

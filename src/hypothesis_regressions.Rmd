@@ -5,11 +5,6 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
-
-reduced -> decreased!
-
-maybe outlier filtering to univariate pics!?
-
 ```{r setup, include=FALSE}
 #echo "rmarkdown::render('hypothesis_regressions.Rmd', clean=TRUE,output_format='html_document',output_file='../results/hypothesis_regressions.html')" | R --slave
 knitr::opts_chunk$set(
@@ -697,7 +692,7 @@ ggplot2::ggsave(filename = "../results/figures/hyp_log_reg_results_b.pdf",
 
 ```{r}
 fig.width=15
-fig.height=17
+fig.height=20
 ```
 
 
@@ -730,7 +725,7 @@ phb <-  ggplot(phbd,aes(x = Difference, y = Hb_v, color = group)) +
   theme_bw() +
   theme(legend.position = "none") +
   xlab("Evolution of self-rated health") +
-  ylab("Initial hemoglobin (g/l)")
+  ylab("Initial hemoglobin (g/l)")  
 
 
 ggplot2::ggsave(plot=phb,filename = "../results/figures/hyp_hb.pdf",
@@ -771,15 +766,17 @@ pfer <-  ggplot(pferd, aes(x = Difference, y = Ferritin_beginning, color = group
   # geom_hline(yintercept = 15, color = "red", linetype = 3) +
   geom_boxplot(outlier.alpha = 0) +
   geom_beeswarm(alpha = 0.5, shape = 1) +
-  # scale_y_log10() +
+   scale_y_log10() +
   facet_grid(group ~.,scales="free_y") +
+  #facet_grid(group ~.) +
   scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
                      limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
   theme_bw() +
   theme(legend.position = "none") +
   xlab("Evolution of self-rated health") +
-  ylab("Initial ferritin (ug/l)") +
-  scale_y_log10() 
+  ylab("Initial ferritin (ug/l)") 
+  #scale_y_log10(limits=c(10,100)) 
+  
   
 
 
@@ -820,7 +817,7 @@ pbm <-  ggplot(pbmd, aes(x = Difference, y = BMI_diff, color = group)) +
   # geom_hline(yintercept = 15, color = "red", linetype = 3) +
   geom_boxplot(outlier.alpha = 0) +
   geom_beeswarm(alpha = 0.5, shape = 1) +
-  # scale_y_log10() +
+  #scale_y_log10() +
   facet_grid(group ~.,scales="free_y") +
   scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
                      limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
@@ -828,9 +825,7 @@ pbm <-  ggplot(pbmd, aes(x = Difference, y = BMI_diff, color = group)) +
   theme(legend.position = "none") +
   xlab("Evolution of self-rated health") +
   ylab("BMI difference") 
-  #scale_y_log10() 
-  
-
+  #ylim(-5,5)
 
 ggplot2::ggsave(plot=pbm,filename = "../results/figures/hyp_bmi_diff.pdf",
        width = fig.width,
@@ -867,15 +862,14 @@ pfq <-  ggplot(pfqd, aes(x = Difference, y = nb_donations_between_questionnaires
   # geom_hline(yintercept = 15, color = "red", linetype = 3) +
   geom_boxplot(outlier.alpha = 0) +
   geom_beeswarm(alpha = 0.5, shape = 1) +
-  # scale_y_log10() +
+  scale_y_log10() +
   facet_grid(group ~.,scales="free_y") +
   scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
                      limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
   theme_bw() +
   theme(legend.position = "none") +
   xlab("Evolution of self-rated health") +
-  ylab("Number of donations between questionnaires") 
-  #scale_y_log10() 
+  ylab("Number of donations between questionnaires")
   
 
 
@@ -915,15 +909,15 @@ pwe <-  ggplot(pwed, aes(x = Difference, y = starting_weight, color = group)) +
   # geom_hline(yintercept = 15, color = "red", linetype = 3) +
   geom_boxplot(outlier.alpha = 0) +
   geom_beeswarm(alpha = 0.5, shape = 1) +
-  # scale_y_log10() +
+   scale_y_log10() +
   facet_grid(group ~.,scales="free_y") +
   scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
                      limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
   theme_bw() +
   theme(legend.position = "none") +
   xlab("Evolution of self-rated health") +
-  ylab("Initial weight") 
-  #scale_y_log10() 
+  ylab("Initial weight (kg)") 
+  
   
 
 
