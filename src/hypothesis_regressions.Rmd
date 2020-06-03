@@ -1,6 +1,6 @@
 ---
 title: "Hypothesis regressions for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
-author: "Mikko Arvasr"
+author: "Mikko Arvas"
 date: "`r Sys.time()`"
 output: html_document
 ---
@@ -65,7 +65,7 @@ We then build a categorical variable for smking status. This avraible will eed t
 * New smoker: non-smoker at first but smoker at second
 * Former smoker: smoker at first but non-smoker at second.
 
-we will apply this coding as it was applied in a recent [epidemiological study](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6290273/) in the Japanese population. Importantly we will consider only changes from smoker to non-smoker, and not changes fron "daily" to "occasional" smoker, as was done in the previously cited paper(NOTE: they had much more precise quantification of smoking behavior (see [questionnaire](https://epi.ncc.go.jp/files/00_common/questionnaire/english/BL_Cohort_I_questionnaire_English.pdf) ) and a much larger N and still used a binary smoking/non-smoking catergorisation).
+we will apply this coding as it was applied in a recent [epidemiological study](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6290273/) in the Japanese population. Importantly we will consider only changes from smoker to non-smoker, and not changes fron "daily" to "occasional" smoker, as was done in the previously cited paper(NOTE: they had much more precise quantification of smoking behavior (see [questionnaire](https://epi.ncc.go.jp/files/00_common/questionnaire/english/BL_Cohort_I_questionnaire_English.pdf) ) and a much larger N and still used a binary smoking/non-smoking catergorisation). However, in the modelling stage we find that smoking can not be used in the models.
 
 We also add age to the dataframe.
 
@@ -612,7 +612,7 @@ write.csv(temp ,file = file,row.names = FALSE)
 
 ```
 
-```{r}
+```{r , fig.width=18}
 
 # "\U0394 BMI"
 bootstrap_distrib %>% 
@@ -853,23 +853,24 @@ pfqd <- final_data %>%
                                 First == Second ~ "Stable",
                                 TRUE ~ "Worsened")) %>% 
     mutate(Difference = ordered(Difference,levels=c("Worsened","Stable","Improved"))) %>% 
-  inner_join(FD_activity_biomarker_data, by = c("donor", "group")) %>% 
+  inner_join(FD_activity_biomarker_data, by = c("donor", "group")) %>%
+  mutate(donation_frequency = nb_donations_between_questionnaires/(interval_between_quest/12) ) %>% 
   mutate(group = case_when(group == "Pre_menopause_women" ~ "Pre-menopausal \n women",
                            group == "Post_menopause_women" ~ "Post-menopausal \n women",
                            TRUE ~ "Men"),
          group = ordered(group, levels = c(  "Men", "Post-menopausal \n women", "Pre-menopausal \n women") )) 
-pfq <-  ggplot(pfqd, aes(x = Difference, y = nb_donations_between_questionnaires, color = group)) +
+pfq <-  ggplot(pfqd, aes(x = Difference, y = donation_frequency, color = group)) +
   # geom_hline(yintercept = 15, color = "red", linetype = 3) +
   geom_boxplot(outlier.alpha = 0) +
   geom_beeswarm(alpha = 0.5, shape = 1) +
-  scale_y_log10() +
+  #scale_y_log10() +
   facet_grid(group ~.,scales="free_y") +
   scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
                      limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
   theme_bw() +
   theme(legend.position = "none") +
   xlab("Evolution of self-rated health") +
-  ylab("Number of donations between questionnaires")
+  ylab("Doonation frequency (yearly)")
   
 
 
@@ -882,7 +883,7 @@ ggplot2::ggsave(plot=pfq,filename = "../results/figures/hyp_n_donations.pdf",
 pfq
 ```
 ```{r}
-pfqd %>% group_by(group, Difference) %>% summarise(mean=mean(nb_donations_between_questionnaires),median=median(nb_donations_between_questionnaires))
+pfqd %>% group_by(group, Difference) %>% summarise(mean=mean(donation_frequency),median=median(donation_frequency))
 
 ```
 
@@ -909,7 +910,7 @@ pwe <-  ggplot(pwed, aes(x = Difference, y = starting_weight, color = group)) +
   # geom_hline(yintercept = 15, color = "red", linetype = 3) +
   geom_boxplot(outlier.alpha = 0) +
   geom_beeswarm(alpha = 0.5, shape = 1) +
-   scale_y_log10() +
+  scale_y_log10() +
   facet_grid(group ~.,scales="free_y") +
   scale_color_manual(values = c( "#ff85a2",  "#de2d26","#00BFFF" ),
                      limits = c("Pre-menopausal \n women", "Post-menopausal \n women","Men" )) +
