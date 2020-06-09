@@ -741,6 +741,10 @@ phbd %>% group_by(group, Difference) %>% summarise(mean=mean(Hb_v),median=median
 
 ```
 
+```{r}
+phbd %>% group_by(group) %>% summarise(mean=mean(Hb_v),median=median(Hb_v))
+
+```
 
 
 
@@ -789,7 +793,12 @@ ggplot2::ggsave(plot=pfer,filename = "../results/figures/hyp_ferritin.pdf",
 pfer
 ```
 ```{r}
-pferd %>% group_by(group, Difference) %>% summarise(mean=mean(Ferritin_beginning),median=median(Ferritin_beginning))
+pferd %>% group_by(group, Difference) %>% summarise(mean=mean(Ferritin_beginning),median=median(Ferritin_beginning),geoMean=exp(mean(log(Ferritin_beginning))))
+
+```
+
+```{r}
+pferd %>% group_by(group) %>% summarise(mean=mean(Ferritin_beginning),median=median(Ferritin_beginning),geoMean=exp(mean(log(Ferritin_beginning))))
 
 ```
 
@@ -840,6 +849,11 @@ pbmd %>% group_by(group, Difference) %>% summarise(mean=mean(BMI_diff),median=me
 
 ```
 
+```{r}
+pbmd %>% group_by(group) %>% summarise(mean=mean(BMI_diff),median=median(BMI_diff))
+
+```
+
 
 ## Donation frequency
 ```{r}
@@ -887,6 +901,10 @@ pfqd %>% group_by(group, Difference) %>% summarise(mean=mean(donation_frequency)
 
 ```
 
+```{r}
+pfqd %>% group_by(group) %>% summarise(mean=mean(donation_frequency),median=median(donation_frequency))
+
+```
 
 
 ## Inital weigth
@@ -937,3 +955,7 @@ pwed %>% group_by(group, Difference) %>% summarise(mean=mean(starting_weight),me
 
 ```
 
+```{r}
+pwed %>% group_by(group) %>% summarise(mean=mean(starting_weight),median=median(starting_weight))
+
+```
