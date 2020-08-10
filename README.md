@@ -13,4 +13,5 @@ folder contains the .Rmd code files
   -explorative_analysis_cmb.Rmd carries out the explorative analysis with women as one group.
 
 ## /results 
-folder contains respective .html files produced by .Rmd files. N.B. you need to download the .html files to your own computer to view them.
+folder contains respective .html files produced by .Rmd files. 
+**N.B. you need to download the .html files to your own computer to view them.**
