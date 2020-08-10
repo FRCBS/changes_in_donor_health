@@ -30,6 +30,7 @@ library(kableExtra)
 # Executive summary
 
 This file includes the code for computing the regression results regarding the predictors of the evolution of self-related health during the FinDonor study for the 
+
 # Load the data
 
 We load the data and assign groups as they were assigned in the first part of the study. 
@@ -58,14 +59,14 @@ We remove donors with very high ferritin (/Ferritin > 400) and high CRP (> 30)
 
 We compute for each donor their wight at first donation and then the difference in reported BMI between the first questionnaire and the last questionnaire. 
 
-We then build a categorical variable for smking status. This avraible will eed to be dummy coedd into 3 varaibles if it is used as a regression variable.
+We then build a categorical variable for smoking status. This variable will need to be dummy coded into 3 variables if it is used as a regression variable.
 
 * Never smoker: non smoker at both time-points
 * Always smoker: smoker at both time-points
 * New smoker: non-smoker at first but smoker at second
 * Former smoker: smoker at first but non-smoker at second.
 
-we will apply this coding as it was applied in a recent [epidemiological study](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6290273/) in the Japanese population. Importantly we will consider only changes from smoker to non-smoker, and not changes fron "daily" to "occasional" smoker, as was done in the previously cited paper(NOTE: they had much more precise quantification of smoking behavior (see [questionnaire](https://epi.ncc.go.jp/files/00_common/questionnaire/english/BL_Cohort_I_questionnaire_English.pdf) ) and a much larger N and still used a binary smoking/non-smoking catergorisation). However, in the modelling stage we find that smoking can not be used in the models.
+We will apply this coding as it was applied in a recent [epidemiological study](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6290273/) in the Japanese population. Importantly we will consider only changes from smoker to non-smoker, and not changes fron "daily" to "occasional" smoker, as was done in the previously cited paper(NOTE: they had much more precise quantification of smoking behavior (see [questionnaire](https://epi.ncc.go.jp/files/00_common/questionnaire/english/BL_Cohort_I_questionnaire_English.pdf) ) and a much larger N and still used a binary smoking/non-smoking catergorisation). However, in the modelling stage we find that smoking can not be used in the models.
 
 We also add age to the dataframe.
 
@@ -150,7 +151,7 @@ We select the variabels that will be included in the models.
 
 We also run some trasnformations to make the OR more interpretable:
 
-* Ferritin is transformed to $$log(Ferritin)/log(2)$$ so that a unit increase in the transformed variable corresponds to a doubking of ferritin
+* Ferritin is transformed to $$log(Ferritin)/log(2)$$ so that a unit increase in the transformed variable corresponds to a doubling of ferritin
 * weight, age and Hb were divided by 5 so that a unit increase in the transformed varaible corresponds to an increase in 5 kg or 5 years or 5 Hb points. 
 
 ```{r}
