@@ -141,11 +141,12 @@ table1data <- regression_data %>% ungroup() %>% dplyr::select(
   #-smoking_behavior
   -health_poor,
   -health_satisfactory,
-  -life_qual
+  -life_qual,
+  -employment
 ) %>% 
   rename(
     Age = age_o,
-    "Full time employed" = "employment",
+    #"Full time employed" = "employment",
     "Inital weight (kg)" =starting_weight_o,
     "BMI difference (second - first)"=BMI_diff_o,
     "Initial ferritin (ug/l)"=Ferritin_beginning,
@@ -233,10 +234,10 @@ logit_women <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                anti_inf_d + 
                                phys_inf_d + 
                                #ment_inf_d +  #fails in bootstrapping
-                               freq_alc_d +
-                               #life_qual +
+                               freq_alc_d 
+                               #life_qual + #breaks causality
                                #education  +  #fails in bootstrapping
-                               employment  
+                               #employment  #breaks causality
                              #smoking_behavior  #fails in bootstrapping
                              ,
                              data=regression_data_women,
@@ -311,10 +312,10 @@ logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                anti_inf_d + 
                                phys_inf_d + 
                                #ment_inf_d + #fails in bootstrapping 
-                               freq_alc_d +
-                              # life_qual +
+                               freq_alc_d 
+                              # life_qual + #breaks causality
                               # education + #fails in bootstrapping 
-                               employment 
+                               #employment +  #breaks causality
                               # smoking_behavior #fails in bootstrapping
                              ,
                              data=regression_data_men,
@@ -463,9 +464,9 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
                                                   anti_inf_d,
                                                   phys_inf_d,
                                                   #  ment_inf_d,
-                                                  freq_alc_d,
-                                                #  life_qual,
-                                                  employment
+                                                  freq_alc_d
+                                                #  life_qual, #breaks causality
+                                                #  employment #breaks causality
                                                 #  education # Error in t.star[r, ] <- res[[r]] : 
                                                 # smoking_behavior #Error in t.star[r, ] <- res[[r]] :
                                                   
@@ -502,9 +503,9 @@ get_bootstrap_coeffs <- function(regression_data, current_group, nb_boot )
                                                   anti_inf_d,
                                                   phys_inf_d,
                                                   # ment_inf_d,
-                                                  freq_alc_d,
-                                                 # life_qual,
-                                                  employment
+                                                  freq_alc_d
+                                                 # life_qual, #breaks causality
+                                                #  employment #breaks causality
                                                 #  education #Error in t.star[r, ] <- res[[r]] : 
                                                #   smoking_behavior # Error in t.star[r, ] <- res[[r]] : 
                                                   
@@ -649,10 +650,10 @@ regressor_values <- c(
 "sleep_tired_dStable" = "Tired during day stable",
 "sleep_tired_dIncreased" = "Tired during day increased",
 "freq_calm_dStable" = "Frequency of feeling calm stable",
-"freq_calm_dIncreased" =  "Frequency of feeling calm increase",
+"freq_calm_dIncreased" =  "Frequency of feeling calm increase"
 #"life_qualgood" = "Quality of life good",
 #"life_qualvery_good" = "Quality of life very good",
-"employmentTRUE" = "Full time employed"
+#"employmentTRUE" = "Full time employed"
 )
 ```
 
@@ -750,7 +751,7 @@ bootstrap_Bca_CI_filtered_2$Bca_sup[bootstrap_Bca_CI_filtered_2$Bca_sup == 0] <-
 bootstrap_Bca_CI_filtered_2$Bca_inf[bootstrap_Bca_CI_filtered_2$Bca_inf < orlimL] <- orlimL
 
 
-plotdata_filtered <- plotdata %>% filter(plotdata$regressor %in% bootstrap_Bca_CI_filtered$regressor) 
+plotdata_filtered <- plotdata %>% filter(plotdata$regressor %in% bootstrap_Bca_CI_filtered$regressor)
 
 
 p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plotdata_filtered) +
