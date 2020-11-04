@@ -1,5 +1,5 @@
 # changes_in_donor_health
-Code for publication ASSOCIATIONS BETWEEN CHANGE IN SELF-RATED HEALTH, LIFESTYLE AND IRON LEVELS IN FINNISH BLOOD DONORS [add ref].
+Code for "Associations between change in self-rated health, lifestyle and iron-levels in Finnish blood donors" [add ref].
 
 ## /src 
 folder contains the .Rmd code files
