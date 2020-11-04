@@ -446,8 +446,6 @@ save(reg_data,file=file)
 # Bootstraps
 ```{r}
 
-# https://www.painblogr.org/2017-10-18-purrring-through-bootstraps.html
-
 
 get_coefficients <- function(data, boot_ind){
   fit <- glm (health_outcome~.,
