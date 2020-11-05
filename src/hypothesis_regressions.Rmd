@@ -5,6 +5,10 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
+TODO:
+-bias plot
+-jpg plotting
+
 ```{r setup, include=FALSE}
 #echo "rmarkdown::render('hypothesis_regressions.Rmd', clean=TRUE,output_format='html_document',output_file='../results/hypothesis_regressions.html')" | R --slave
 knitr::opts_chunk$set(

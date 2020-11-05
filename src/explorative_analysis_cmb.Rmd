@@ -5,6 +5,16 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
+TODO:
+-plot about change of class in health rating: 
+  health_evolution_distribution.png
+  rather fig 2 of the cohort paper for both populations maybe with heat colors?
+  iron_paper compare_questionnaire_answers.Rmd
+
+-jpg
+-there is no initial and final health rating
+
+
 
 ```{r setup, include=FALSE}
 Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
@@ -139,6 +149,7 @@ table1data <- regression_data %>% ungroup() %>% dplyr::select(
   #-ment_inf_d,
   #-education,
   #-smoking_behavior
+  -anemia_hist_d,
   -health_poor,
   -health_satisfactory,
   -life_qual,
@@ -152,7 +163,7 @@ table1data <- regression_data %>% ungroup() %>% dplyr::select(
     "Initial ferritin (ug/l)"=Ferritin_beginning,
     "Initial hemoglobin (g/l)" =Hb_beginning_o,
     "Donation frequency (yearly)"=donation_frequency_o,
-    "Anemia detected"=anemia_hist_d,
+    #"Anemia detected"=anemia_hist_d,
     "Elevated cholesterol detected" =  "cholesterol_d",
     "Elevated blood sugar detected"="blood_sugar_d" , 
     "High blood pressure detected"="HBP_d",
@@ -178,6 +189,39 @@ table1data <- regression_data %>% ungroup() %>% dplyr::select(
     "Frequency of feeling calm" = "freq_calm_d"
     #"Quality of life" = "life_qual"
   )
+#Reorder columns to make table cleaner
+table1data <- table1data[,c("group",
+                            "Age",
+                            "Inital weight (kg)", 
+                            "BMI difference (second - first)",
+                            "Initial hemoglobin (g/l)",
+                            "Initial ferritin (ug/l)",
+                            "Donation frequency (yearly)",                             
+                            "Elevated cholesterol detected",
+                            "Elevated blood sugar detected",
+                            "High blood pressure detected",   
+                            "Low haemoglobin detected",
+                            "FRCBS iron supplementation",
+                            "Frequency of feeling calm",       
+                            "Frequency of red meat",
+                            "Frequency of fruits",
+                            "Frequency of juices",
+                            "Frequency of whole milk",
+                            "Frequency of milk",              
+                            "Frequency of coffee",
+                            "Frequency of tea",
+                            "Physical condition",
+                            "Ability for heavy activity",
+                            "Enough sleep",
+                            "Typical day activity",
+                            "Hours for light activity",
+                            "Frequency multivitamine",        
+                            "Tired during day",
+                            "Frequency of anti-inflammatory",
+                            "Physical symptoms inferred",
+                            "Frequency of alcohol"           
+
+  )]
 
 myVars<- colnames(table1data %>% dplyr::select(-group))
 non_normal_vars <- c("Initial ferritin (ug/l)")
@@ -192,9 +236,13 @@ tab3Mat %>%
 #Does not work   
 #openxlsx::write.xlsx(tab3Mat, file = "../results/table_1_populationExp_20200512.xlsx",rowNames =TRUE,borders="surrounding",keepNA=TRUE)
 ```
+```{r}
+colnames(table1data)
+```
 
+There should be `ncol(table1data) -1` explenatory factors in the explorative model.
 
-# Premenopausal women
+# Women
 
 Check that final data has some variation
 ```{r}
@@ -211,8 +259,8 @@ logit_women <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                               blood_sugar_d + 
                                HBP_d + 
                                 low_hb_hist_d + 
-                               anemia_hist_d + 
-#                               high_hb_hist_d + # The following terms are causing separation among the sample points: high_hb_hist_dTRUE
+#                               anemia_hist_d + separation exists among the sample points.
+#                               high_hb_hist_d + # separation exists among the sample points
                                iron_supp_d + 
                                #sleep_night_d + # #fails in bootstrapping
                                freq_calm_d + 
@@ -236,7 +284,7 @@ logit_women <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                #ment_inf_d +  #fails in bootstrapping
                                freq_alc_d 
                                #life_qual + #breaks causality
-                               #education  +  #fails in bootstrapping
+                               #education  +  #fbreaks causality
                                #employment  #breaks causality
                              #smoking_behavior  #fails in bootstrapping
                              ,
@@ -246,7 +294,7 @@ logit_women <- glm(health_outcome ~ age + starting_weight + BMI_diff +
  summary(logit_women)
 ```
 
-cholesterol_d + blood_sugar_d + HBP_d + low_hb_hist_d + anemia_hist_d + high_hb_hist_d + iron_supp_d + sleep_night_d + freq_calm_d + freq_red_meat_d + freq_fruits_d + freq_juices_d + freq_wholem_d + freq_milk_d + freq_cof_d + freq_tea_d + phys_cond_d + act_heavy_d + sleep_enough_d + day_act_d + h_act_light_d + vita_multi_d + vita_iron_d + sleep_tired_d + anti_inf_d + phys_inf_d + ment_inf_d + freq_alc_d 
+
 
 ```{r}
 plot(logit_women)
@@ -258,6 +306,9 @@ vif(logit_women)
 
 ```{r}
 logistic.display(logit_women,simplified=TRUE)
+```
+```{r}
+unlist(strsplit(x = gsub("*.~","",logit_women$formula)[3],split = ' \\+ '))
 ```
 
 
@@ -289,8 +340,8 @@ logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                blood_sugar_d + 
                                HBP_d + 
                                low_hb_hist_d + 
-                              # anemia_hist_d + # eparation exists among the sample points.
-                              # high_hb_hist_d + 
+                              # anemia_hist_d + # separation exists among the sample points.
+                              # high_hb_hist_d + # separation exists among the sample points.
                                iron_supp_d + 
                               # sleep_night_d + #fails in bootstrapping
                                freq_calm_d + 
@@ -307,14 +358,14 @@ logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff +
                                day_act_d + 
                                h_act_light_d + 
                                vita_multi_d + 
-                               #vita_iron_d + 
+                               #vita_iron_d + # separation exists among the sample points.
                                sleep_tired_d + 
                                anti_inf_d + 
                                phys_inf_d + 
                                #ment_inf_d + #fails in bootstrapping 
                                freq_alc_d 
                               # life_qual + #breaks causality
-                              # education + #fails in bootstrapping 
+                              # education + #breaks causality 
                                #employment +  #breaks causality
                               # smoking_behavior #fails in bootstrapping
                              ,
@@ -326,8 +377,11 @@ logit_men <- glm(health_outcome ~ age + starting_weight + BMI_diff +
  
  
 ```
+```{r}
+unlist(strsplit(x = gsub("*.~","",logit_men$formula)[3],split = ' \\+ '))
+```
 
-cholesterol_d + blood_sugar_d + HBP_d + low_hb_hist_d + anemia_hist_d + high_hb_hist_d + iron_supp_d + sleep_night_d + freq_calm_d + freq_red_meat_d + freq_fruits_d + freq_juices_d + freq_wholem_d + freq_milk_d + freq_cof_d + freq_tea_d + phys_cond_d + act_heavy_d + sleep_enough_d + day_act_d + h_act_light_d + vita_multi_d + vita_iron_d + sleep_tired_d + anti_inf_d + phys_inf_d + ment_inf_d + freq_alc_d 
+ 
 
 ```{r}
 plot(logit_men)

@@ -1,0 +1,80 @@
+---
+title: "Selection bias analysis for Associations between changes in self-rated health, lifestyle and iron levels in Finnish blood donors"
+author: "Mikko Arvas"
+date: "`r Sys.time()`"
+output: html_document
+---
+
+TODO:
+- from dots to to count + percentage symbols
+- separate plots for all, reg set, and exp set? everyone to a single facet plot?
+- compare counts vectors of all to hyp and exp set
+
+```{r setup, include=FALSE}
+Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
+Sys.setenv(LANG = "en_US.UTF-8")
+# echo "rmarkdown::render('inital_data_analysis.Rmd', clean=TRUE,output_format='html_document',output_file='../results/selection_bias_analysis.html')" | R --slave
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+library(tidyverse)
+library(knitr)
+```
+
+
+
+# Executive summary
+
+
+
+# Load the data
+
+We load the data and assign groups as they were assigned in the first part of the study. 
+
+```{r loading}
+#Load questionnaire data
+load(file = "../data/final_data.rdata") 
+data <- data %>% ungroup()
+data %>% group_by(questionnaire) %>% count()
+
+```
+
+```{r}
+data %>% group_by(questionnaire,group)  %>%  count()
+```
+
+
+```{r fig.height=6, fig.width=10, warning=FALSE}
+p <- data %>% 
+  dplyr::select(donor, sex, health, questionnaire) %>% 
+  spread(key = questionnaire, value = health) %>% 
+  filter(First != "NA" & Second != "NA") %>%
+    mutate(evolution = case_when(First < Second ~"improved",
+                               First == Second ~ "same",
+                               TRUE ~ "worsened")) %>% 
+  ggplot(aes (x = First, y = Second, color = evolution)) +
+  #geom_jitter(shape = 1,
+  #            width = 0.4) +
+  geom_count()# +
+#  geom_text(aes(label=..count..), stat='count', colour="red", size=4) 
+
+ p<- p + geom_text(data = ggplot_build(p)$data[[1]], 
+              aes(x, y, label = n), color = "black") +
+   #this does no separate sexes right
+   #https://stulp.gmw.rug.nl/ggplotworkshop/twodiscretevariables.html
+   #see maybe you have to facet first!
+#  geom_text(stat = "count", aes(label = ..count..), vjust = -1) +
+  facet_grid(~sex) + 
+  scale_color_manual(values = c("green", "gray", "red")) +
+  theme_bw() +
+  guides(color = FALSE) +
+   #ggtitle("How would you rate your health in general?") +
+  xlab("First questionnaire") +
+  ylab("Second questionnaire")
+ p
+```
+
+
+
