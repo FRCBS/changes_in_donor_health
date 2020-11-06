@@ -31,7 +31,9 @@ library(knitr)
 
 # Load the data
 
-We load the data and assign groups as they were assigned in the first part of the study. 
+Load enrollment data
+
+Load combined data
 
 ```{r loading}
 #Load questionnaire data
@@ -46,7 +48,33 @@ data %>% group_by(questionnaire,group)  %>%  count()
 ```
 
 
+# Make exclusions as in hypothesis testing and explorative analysis
+
+```{r}
+
+file <- "../results/hypregdata_unscaled.rdata"
+load(file)
+
+hyp_health <- data %>% inner_join(regression_data %>% dplyr::select(donor))
+
+hyp_health <- hyp_health %>%
+  dplyr::select(donor, sex, health, questionnaire) %>% 
+  #spread(key = questionnaire, value = health) 
+  #this creates NA's from nowhere?
+  #%>% filter(First != "NA" & Second != "NA") 
+  
+hyp_health %>%  count(sex)
+```
+
+
+```{r}
+hyp_health  %>% count()
+```
+
+
 ```{r fig.height=6, fig.width=10, warning=FALSE}
+
+
 p <- data %>% 
   dplyr::select(donor, sex, health, questionnaire) %>% 
   spread(key = questionnaire, value = health) %>% 
@@ -57,16 +85,17 @@ p <- data %>%
   ggplot(aes (x = First, y = Second, color = evolution)) +
   #geom_jitter(shape = 1,
   #            width = 0.4) +
-  geom_count()# +
+  geom_count() +
 #  geom_text(aes(label=..count..), stat='count', colour="red", size=4) 
-
+  facet_grid(~sex)
+  
  p<- p + geom_text(data = ggplot_build(p)$data[[1]], 
               aes(x, y, label = n), color = "black") +
    #this does no separate sexes right
    #https://stulp.gmw.rug.nl/ggplotworkshop/twodiscretevariables.html
-   #see maybe you have to facet first!
-#  geom_text(stat = "count", aes(label = ..count..), vjust = -1) +
-  facet_grid(~sex) + 
+  #now the numbers are there but they don't faceted right. Does it need to be faceted by sex?
+   #https://stackoverflow.com/questions/55531147/how-to-add-labels-to-facet-wraped-geom-count-plot
+   #you have to make the counts first
   scale_color_manual(values = c("green", "gray", "red")) +
   theme_bw() +
   guides(color = FALSE) +

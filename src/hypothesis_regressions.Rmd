@@ -6,7 +6,6 @@ output: html_document
 ---
 
 TODO:
--bias plot
 -jpg plotting
 
 ```{r setup, include=FALSE}
