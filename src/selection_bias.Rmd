@@ -5,15 +5,10 @@ date: "`r Sys.time()`"
 output: html_document
 ---
 
-TODO:
-- from dots to to count + percentage symbols
-- separate plots for all, reg set, and exp set? everyone to a single facet plot?
-- compare counts vectors of all to hyp and exp set
-
 ```{r setup, include=FALSE}
 Sys.setlocale("LC_MESSAGES", 'en_GB.UTF-8')
 Sys.setenv(LANG = "en_US.UTF-8")
-# echo "rmarkdown::render('inital_data_analysis.Rmd', clean=TRUE,output_format='html_document',output_file='../results/selection_bias_analysis.html')" | R --slave
+# echo "rmarkdown::render('selection_bias.Rmd', clean=TRUE,output_format='html_document',output_file='../results/selection_bias.html')" | R --slave
 knitr::opts_chunk$set(
 	echo = TRUE,
 	message = FALSE,
@@ -27,7 +22,7 @@ library(knitr)
 
 # Executive summary
 
-
+We collect participants of different analysis subcohorts and plot change in their health status between the first and second health questionaires. Furthermore, for each inital health class we count the rate of participation for the two analysis subcohorts. 
 
 # Load the data
 
@@ -38,7 +33,7 @@ load(file)
 count(first_questionnaire_data)
 ```
 
-And 4 persons that did not answer the first questinnaire. 
+And 4 persons that did not answer the first questionnaire. 
 
 Load combined data
 
@@ -91,7 +86,7 @@ hyp_health  %>% count()
 
 hyp_health_sum <- hyp_health %>% group_by(sex) %>% count(First,Second) %>%  mutate(pros = paste0(round(n / sum(n) *100,0), " %"),
                                                                                      freq = n / sum(n))
-hyp_health_sum
+hyp_health_sum  %>% select(sex,First,Second,pros)
 ```
 
 
@@ -108,7 +103,7 @@ expl_health %>% count(sex)
 
 expl_health_sum <- expl_health %>% group_by(sex) %>% count(First,Second) %>%  mutate(pros = paste0(round(n / sum(n) *100,0), " %"),
                                                                                      freq = n / sum(n))
-expl_health_sum
+expl_health_sum %>% select(sex,First,Second,pros)
 
 ```
 
@@ -125,7 +120,7 @@ p <- hyp_health %>%
   geom_text(data = hyp_health_sum, 
               aes(x = First, y = Second, label = pros), color = "black") +
       #https://stackoverflow.com/questions/55531147/how-to-add-labels-to-facet-wraped-geom-count-plot
-   #you have to make the counts first
+   #you have to make the counts first if you want to overlay data and counts
   scale_color_manual(values = c("lightgreen", "gray", "pink"),name="Evolution") +
   theme_bw() +
   xlab("First questionnaire") +
@@ -148,9 +143,7 @@ p <- expl_health %>%
   facet_grid(~sex) +
   geom_text(data = hyp_health_sum, 
               aes(x = First, y = Second, label = pros), color = "black") +
-      #https://stackoverflow.com/questions/55531147/how-to-add-labels-to-facet-wraped-geom-count-plot
-   #you have to make the counts first
-  scale_color_manual(values = c("lightgreen", "gray", "pink"),name="Evolution") +
+        scale_color_manual(values = c("lightgreen", "gray", "pink"),name="Evolution") +
   theme_bw() +
   xlab("First questionnaire") +
   ylab("Second questionnaire")
@@ -202,7 +195,7 @@ p <-  health %>%
 
 # Completion rate table
 ```{r}
-enrol_comp <- enrol_health <- first_questionnaire_data %>% rename( Health = QR17, Sex=sex)%>%  group_by(Sex,Health) %>%  summarise(n = n()) %>% mutate(
+enrol_comp <- first_questionnaire_data %>% rename( Health = QR17, Sex=sex)%>%  group_by(Sex,Health) %>%  summarise(n = n()) %>% mutate(
                                                           freq = n / sum(n),
                                                           pros = paste0(round(n / sum(n) *100,0), " %")
                                                           
@@ -235,5 +228,29 @@ Of those who were included in the two subcohorts how many has a specific self-es
 
 But how many of those who were included in the two subcohorts ended up in a subcohort.
 
+```{r}
+hy <- hyp_health %>% mutate(Hypothesis = "Hypothesis") %>% select(donor,Hypothesis)
+ex <- expl_health %>% mutate(Explorative = "Explorative") %>% select(donor,Explorative) 
+comp <- first_questionnaire_data %>% rename( Health = QR17, Sex=sex)%>% select(donor,Health,Sex) %>% full_join(hy,by=c("donor"="donor")) %>% full_join(ex,by=c("donor"="donor")) %>% mutate(Subcohort = paste0(Hypothesis,'_',Explorative)) %>% select(-Hypothesis,-Explorative)
 
+comp_sum<- comp %>% group_by(Sex,Health,Subcohort) %>% 
+  summarise(n = n()) %>% 
+  pivot_wider(names_from = Subcohort, values_from=n) %>% 
+  mutate(Hypothesis = Hypothesis_NA + Hypothesis_Explorative,Total=sum(NA_NA ,Hypothesis_NA ,Hypothesis_Explorative,na.rm = TRUE)) %>% 
+  rename(Explorative=Hypothesis_Explorative) %>%
+  mutate(Hypothesis=replace_na(Hypothesis,0),
+         Explorative=replace_na(Explorative,0)
+         ) %>% 
+  mutate("Hypothesis %"  = paste(round(Hypothesis / Total*100,0), " %"),
+         "Explorative %" = paste0(round(Explorative / Total*100,0), " %")
+         ) %>% 
+#  select(Sex, Health,Total, Hypothesis,"Hypothesis %" ,Explorative,"Explorative %") 
+    select(Sex, Health,Total,"Hypothesis %" ,"Explorative %")
+comp_sum
+```
+
+```{r}
+file <- "../results/completion_rates.csv"
+write.table(comp_sum,file=file,sep="\t",row.names = FALSE)
+```
 
