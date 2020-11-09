@@ -32,6 +32,13 @@ library(knitr)
 # Load the data
 
 Load enrollment data
+```{r}
+file <- "../data/first_questionnaire_data_.rdata"
+load(file)
+count(first_questionnaire_data)
+```
+
+And 4 persons that did not answer the first questinnaire. 
 
 Load combined data
 
@@ -47,6 +54,15 @@ data %>% group_by(questionnaire) %>% count()
 data %>% group_by(questionnaire,group)  %>%  count()
 ```
 
+Load the explorative analysis data
+
+```{r}
+#Load questionnaire data recoded to change
+load(file = "../results/changedata.rdata") #  changedata 
+
+
+```
+
 
 # Make exclusions as in hypothesis testing and explorative analysis
 
@@ -59,7 +75,7 @@ hyp_health <- data %>% inner_join(regression_data %>% dplyr::select(donor))
 
 hyp_health <- hyp_health %>%
   dplyr::select(donor, sex, health, questionnaire) %>% 
-  #spread(key = questionnaire, value = health) 
+  spread(key = questionnaire, value = health) 
   #this creates NA's from nowhere?
   #%>% filter(First != "NA" & Second != "NA") 
   
@@ -71,39 +87,153 @@ hyp_health %>%  count(sex)
 hyp_health  %>% count()
 ```
 
+```{r}
+
+hyp_health_sum <- hyp_health %>% group_by(sex) %>% count(First,Second) %>%  mutate(pros = paste0(round(n / sum(n) *100,0), " %"),
+                                                                                     freq = n / sum(n))
+hyp_health_sum
+```
+
+
+```{r}
+expl_health <- hyp_health %>%  inner_join( changedata %>% select(donor))
+expl_health %>% count()
+```
+
+```{r}
+expl_health %>% count(sex)
+```
+
+```{r}
+
+expl_health_sum <- expl_health %>% group_by(sex) %>% count(First,Second) %>%  mutate(pros = paste0(round(n / sum(n) *100,0), " %"),
+                                                                                     freq = n / sum(n))
+expl_health_sum
+
+```
+
+# Plot
 
 ```{r fig.height=6, fig.width=10, warning=FALSE}
-
-
-p <- data %>% 
-  dplyr::select(donor, sex, health, questionnaire) %>% 
-  spread(key = questionnaire, value = health) %>% 
-  filter(First != "NA" & Second != "NA") %>%
+p <- hyp_health %>% 
     mutate(evolution = case_when(First < Second ~"improved",
                                First == Second ~ "same",
                                TRUE ~ "worsened")) %>% 
   ggplot(aes (x = First, y = Second, color = evolution)) +
-  #geom_jitter(shape = 1,
-  #            width = 0.4) +
   geom_count() +
-#  geom_text(aes(label=..count..), stat='count', colour="red", size=4) 
-  facet_grid(~sex)
-  
- p<- p + geom_text(data = ggplot_build(p)$data[[1]], 
-              aes(x, y, label = n), color = "black") +
-   #this does no separate sexes right
-   #https://stulp.gmw.rug.nl/ggplotworkshop/twodiscretevariables.html
-  #now the numbers are there but they don't faceted right. Does it need to be faceted by sex?
-   #https://stackoverflow.com/questions/55531147/how-to-add-labels-to-facet-wraped-geom-count-plot
+  facet_grid(~sex) +
+  geom_text(data = hyp_health_sum, 
+              aes(x = First, y = Second, label = pros), color = "black") +
+      #https://stackoverflow.com/questions/55531147/how-to-add-labels-to-facet-wraped-geom-count-plot
    #you have to make the counts first
-  scale_color_manual(values = c("green", "gray", "red")) +
+  scale_color_manual(values = c("lightgreen", "gray", "pink"),name="Evolution") +
   theme_bw() +
-  guides(color = FALSE) +
-   #ggtitle("How would you rate your health in general?") +
   xlab("First questionnaire") +
   ylab("Second questionnaire")
+
  p
+ filename <- "../results/figures/health_group_change_1416.pdf"
+ ggsave(filename=filename, p, width = 180,  height = 90,units="mm", dpi=600, scale=1.0)
+ 
 ```
+
+
+```{r fig.height=6, fig.width=10, warning=FALSE}
+p <- expl_health %>% 
+    mutate(evolution = case_when(First < Second ~"improved",
+                               First == Second ~ "same",
+                               TRUE ~ "worsened")) %>% 
+  ggplot(aes (x = First, y = Second, color = evolution)) +
+  geom_count() +
+  facet_grid(~sex) +
+  geom_text(data = hyp_health_sum, 
+              aes(x = First, y = Second, label = pros), color = "black") +
+      #https://stackoverflow.com/questions/55531147/how-to-add-labels-to-facet-wraped-geom-count-plot
+   #you have to make the counts first
+  scale_color_manual(values = c("lightgreen", "gray", "pink"),name="Evolution") +
+  theme_bw() +
+  xlab("First questionnaire") +
+  ylab("Second questionnaire")
+
+ p
+ filename <- "../results/figures/health_group_change_1045.pdf"
+ ggsave(filename=filename, p, width = 180,  height = 90,units="mm", dpi=600, scale=1.0)
+ 
+```
+
+Let's put them together
+```{r}
+hyp_health_sum <-  hyp_health_sum %>% mutate(Group = "Hypothesis")
+expl_health_sum <- expl_health_sum %>% mutate(Group = "Explorative")
+health_sum <- bind_rows(hyp_health_sum, expl_health_sum)
+
+hyp_health <-  hyp_health %>% mutate(Group = "Hypothesis")
+expl_health <- expl_health %>% mutate(Group = "Explorative")
+health <- bind_rows(hyp_health, expl_health)
+
+
+```
+
+```{r fig.height=6, fig.width=10, warning=FALSE}
+p <-  health %>%
+    mutate(evolution = case_when(First < Second ~"improved",
+                               First == Second ~ "same",
+                               TRUE ~ "worsened")) %>% 
+  ggplot(aes (x = First, y = Second, color = evolution)) +
+  geom_count() +
+  facet_grid(Group~sex) +
+  geom_text(data = health_sum, 
+              aes(x = First, y = Second, label = pros), color = "black") +
+      #https://stackoverflow.com/questions/55531147/how-to-add-labels-to-facet-wraped-geom-count-plot
+   #you have to make the counts first
+  scale_color_manual(values = c("lightgreen", "gray", "pink"),name="Evolution") +
+  theme_bw() +
+  xlab("First questionnaire") +
+  ylab("Second questionnaire")
+
+ p
+ filename <- "../results/figures/health_group_change.pdf"
+ ggsave(filename=filename, p, width = 180,  height = 140,units="mm", dpi=600, scale=1.0)
+ 
+```
+
+
+
+
+# Completion rate table
+```{r}
+enrol_comp <- enrol_health <- first_questionnaire_data %>% rename( Health = QR17, Sex=sex)%>%  group_by(Sex,Health) %>%  summarise(n = n()) %>% mutate(
+                                                          freq = n / sum(n),
+                                                          pros = paste0(round(n / sum(n) *100,0), " %")
+                                                          
+                                                          )
+enrol_comp  
+```
+
+```{r}
+hyp_comp <- first_questionnaire_data %>% inner_join(hyp_health %>% select(donor),by = c("donor"="donor")) %>% rename( Health = QR17, Sex=sex)%>%  group_by(Sex,Health) %>%  summarise(n = n()) %>% mutate(
+                                                          freq = n / sum(n),
+                                                          pros = paste0(round(n / sum(n) *100,0), " %")
+                                                          ) %>% select(Health, pros) %>% rename(Hyp_comp = pros)
+hyp_comp
+```
+
+```{r}
+expl_comp <- first_questionnaire_data %>% inner_join(expl_health %>% select(donor),by = c("donor"="donor")) %>% rename( Health = QR17, Sex=sex)%>%  group_by(Sex,Health) %>%  summarise(n = n()) %>% mutate(
+                                                          freq = n / sum(n),
+                                                          pros = paste0(round(n / sum(n) *100,0), " %")
+                                                          ) %>% select(Health,pros) %>% rename(Exp_comp = pros)
+expl_comp
+```
+
+```{r}
+comp <- full_join(enrol_comp,hyp_comp,by=c("Sex"="Sex","Health"="Health")) %>% full_join(expl_comp,by=c("Sex"="Sex","Health"="Health")) %>% select(-freq)
+comp
+```
+
+Of those who were included in the two subcohorts how many has a specific self-estimated health in the enrollment data.
+
+But how many of those who were included in the two subcohorts ended up in a subcohort.
 
 
 
