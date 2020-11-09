@@ -1,19 +1,9 @@
 ---
-title: "Explorative data analysis for FINDONOR with women as one group- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
+title: "Explorative data analysis for Associations between changes in self-rated health, lifestyle and iron levels in Finnish blood donors with women as one group"
 author: "Mikko Arvas"
 date: "`r Sys.time()`"
 output: html_document
 ---
-
-TODO:
--plot about change of class in health rating: 
-  health_evolution_distribution.png
-  rather fig 2 of the cohort paper for both populations maybe with heat colors?
-  iron_paper compare_questionnaire_answers.Rmd
-
--jpg
--there is no initial and final health rating
-
 
 
 ```{r setup, include=FALSE}
