@@ -250,7 +250,7 @@ comp_sum
 ```
 
 ```{r}
-file <- "../results/completion_rates.csv"
+file <- "../results/completion_rates.txt"
 write.table(comp_sum,file=file,sep="\t",row.names = FALSE)
 ```
 

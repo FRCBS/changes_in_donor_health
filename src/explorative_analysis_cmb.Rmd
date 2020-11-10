@@ -221,7 +221,7 @@ tab3Mat <- print(summary_table, nonnormal = non_normal_vars,vars=myVars, quote =
 
 tab3Mat %>% 
   kable()
-  write.csv(tab3Mat, file = paste0("../results/table_1_populationExp_",gsub("-","",as.Date(Sys.time())),".csv"))
+  write.table(tab3Mat, file = paste0("../results/table_1_populationExp_",gsub("-","",as.Date(Sys.time())),".txt"),sep="\t")
  
 #Does not work   
 #openxlsx::write.xlsx(tab3Mat, file = "../results/table_1_populationExp_20200512.xlsx",rowNames =TRUE,borders="surrounding",keepNA=TRUE)
@@ -768,9 +768,14 @@ plotdata <- bootstrap_distrib %>%
 
 bootstrap_Bca_CI_2 <- temp2
 
-file <- "../results/exp_bootstrap_Bca_CI.csv"
-temp <- bootstrap_Bca_CI %>% mutate_if(is.numeric, round, digits = 3) %>% dplyr::select(regressor,group,p.value,OR,Bca_inf,Bca_sup) %>% arrange(desc(regressor),group)
-write.csv(temp ,file = file,row.names = FALSE)
+file <- "../results/exp_bootstrap_Bca_CI.txt"
+temp <- bootstrap_Bca_CI %>% 
+  mutate_if(is.numeric, round, digits = 3) %>% 
+  dplyr::select(regressor,group,p.value,OR,Bca_inf,Bca_sup) %>% 
+  arrange(desc(regressor),group) %>% 
+#Truncate the multiple testing corrected p-value distribution as it the practise for example in SPSS  #https://www.ibm.com/support/pages/calculation-bonferroni-adjusted-p-values 
+  mutate(p.value = replace(p.value, p.value >= 1,1 ))
+write.table(temp ,file = file,row.names = FALSE,sep="\t")
 
 ```
 
