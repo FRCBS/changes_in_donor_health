@@ -803,7 +803,7 @@ bootstrap_Bca_CI_filtered_2$Bca_inf[bootstrap_Bca_CI_filtered_2$Bca_inf < orlimL
 plotdata_filtered <- plotdata %>% filter(plotdata$regressor %in% bootstrap_Bca_CI_filtered$regressor)
 
 
-p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plotdata_filtered) +
+pfro  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plotdata_filtered) +
   geom_hline(yintercept = 1 , color = "grey", linetype = "dotted",
              size = 1) +
   # geom_violin(alpha = 0.15, trim = TRUE, position = position_dodge(width = 0.8), size = 0.1) +
@@ -853,13 +853,13 @@ p  <- ggplot(aes(x = regressor, y = OR, color = group, fill = group),data = plot
         plot.subtitle = element_text(size = 16,
                                      hjust = 0.5))
 
-p
+pfro
 
 ```
 
 ```{r}
 
-p <- p +   labs(title = NULL,subtitle = NULL)
+pfro <- pfro +   labs(title = NULL,subtitle = NULL)
 ggplot2::ggsave(filename = "../results/figures/exp_small_log_reg_results_b.pdf",
                 plot= p,
 # do not change these rather just scale the ready pdf later if you need.
@@ -869,6 +869,20 @@ ggplot2::ggsave(filename = "../results/figures/exp_small_log_reg_results_b.pdf",
        units = "cm")
 
 ```
+
+Make a smaller plot for presentations
+```{r}
+
+ggplot2::ggsave(filename = "../results/figures/exp_small_log_reg_results_b_pres.pdf",
+                plot= pfro,
+       width = 25,
+       height = 15,
+       dpi = 600,
+       units = "cm")
+
+```
+
+
 
 
 #Big plot of all variables for supplement

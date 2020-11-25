@@ -615,7 +615,7 @@ write.table(temp ,file = file,row.names = FALSE,sep = "\t")
 ```{r , fig.width=18}
 
 # "\U0394 BMI"
-bootstrap_distrib %>% 
+pfro <- bootstrap_distrib %>% 
   mutate(regressor = plyr::revalue(regressor, regressor_values),
   regressor = ordered(regressor,
                   levels =  c("Age", "Initial weight", "BMI difference",  "Initial Hemoglobin", 
@@ -678,13 +678,29 @@ bootstrap_distrib %>%
                                      hjust = 0.5))
    #
 ggplot2::ggsave(filename = "../results/figures/hyp_log_reg_results_b.pdf",
-       width = 35,
-       height = 18,
-       dpi = 600,
-       units = "cm")
+                plot = pfro,
+                width = 35,
+                height = 18,
+                dpi = 600,
+                units = "cm")
 
+pfro
 ```
 
+Make a smaller plot for presentations.
+```{r}
+pfro$layer[[2]] <- NULL
+pfro <- pfro + geom_pointrange(data = bootstrap_Bca_CI, 
+                  aes(ymin=Bca_inf, ymax = Bca_sup, shape = is_sig, color = group, fill = group),
+                  position = position_dodge(width = 0.7), size = 0.8)
+ggplot2::ggsave(filename = "../results/figures/hyp_log_reg_results_b_pres.pdf",
+                plot = pfro,
+                width = 27,
+                height = 12,
+                dpi = 600,
+                units = "cm")
+
+```
 
 
 
