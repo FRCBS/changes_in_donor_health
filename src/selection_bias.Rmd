@@ -48,6 +48,9 @@ data %>% group_by(questionnaire) %>% count()
 ```{r}
 data %>% group_by(questionnaire,group)  %>%  count()
 ```
+```{r}
+data %>% count()
+```
 
 Load the explorative analysis data
 
@@ -84,7 +87,7 @@ hyp_health  %>% count()
 
 ```{r}
 
-hyp_health_sum <- hyp_health %>% group_by(sex) %>% count(First,Second) %>%  mutate(pros = paste0(round(n / sum(n) *100,0), " %"),
+hyp_health_sum <- hyp_health %>% group_by(sex) %>% count(First,Second) %>%  mutate(pros = paste0(round(n / sum(n) *100,1), " %"),
                                                                                      freq = n / sum(n))
 hyp_health_sum  %>% select(sex,First,Second,pros)
 ```
@@ -101,7 +104,7 @@ expl_health %>% count(sex)
 
 ```{r}
 
-expl_health_sum <- expl_health %>% group_by(sex) %>% count(First,Second) %>%  mutate(pros = paste0(round(n / sum(n) *100,0), " %"),
+expl_health_sum <- expl_health %>% group_by(sex) %>% count(First,Second) %>%  mutate(pros = paste0(round(n / sum(n) *100,1), " %"),
                                                                                      freq = n / sum(n))
 expl_health_sum %>% select(sex,First,Second,pros)
 

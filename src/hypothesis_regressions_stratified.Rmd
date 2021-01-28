@@ -1,5 +1,5 @@
 ---
-title: "Hypothesis regressions for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS "
+title: "Hypothesis regressions for FINDONOR- CHANGES IN SELF-RATED HEALTH DURING THE STUDY AND IT'S RELATION TO IRON BIOMARKERS  stratified analysis"
 author: "Mikko Arvas"
 date: "`r Sys.time()`"
 output: html_document
@@ -7,7 +7,7 @@ output: html_document
 
 
 ```{r setup, include=FALSE}
-#echo "rmarkdown::render('hypothesis_regressions.Rmd', clean=TRUE,output_format='html_document',output_file='../results/hypothesis_regressions.html')" | R --slave
+#echo "rmarkdown::render('hypothesis_regressions_stratified.Rmd', clean=TRUE,output_format='html_document',output_file='../results/hypothesis_regressions_stratified.html')" | R --slave
 knitr::opts_chunk$set(
 	echo = TRUE,
 	message = FALSE,
@@ -30,7 +30,7 @@ library(kableExtra)
 
 # Executive summary
 
-This file includes the code for computing the regression results regarding the predictors of the evolution of self-related health during the FinDonor study for the 
+This file includes the code for computing the regression results regarding the predictors of the evolution of self-related health during the FinDonor study for the stratified analysis. 
 
 # Load the data
 
@@ -207,6 +207,46 @@ regression_data %>%   group_by(group,sex) %>%
 
 ```
 
+# Table 1
+```{r}
+myVars <- c(   "Age" ,
+  "Initial weight (kg)" ,
+  "BMI difference (second - first)" ,
+  "Initial hemoglobin (g/l)" ,
+  "Initial ferritin (ug/l)" ,
+  "Donation frequency (yearly)" ,
+  "Inital health rating",
+  "Final health rating")
+
+
+non_normal_vars <- c("Initial ferritin (ug/l)")
+
+health1<- first_questionnaire_data %>% dplyr::select(donor,health) %>% rename(initial_health=health)
+health2<- second_questionnaire_data %>% dplyr::select(donor,health) %>% rename(final_health=health)
+
+table1data <- regression_data %>% left_join(health1) %>% left_join(health2) 
+table1data <- table1data %>% dplyr::select(group,age_o,starting_weight_o,BMI_diff,Hb_beginning_o,Ferritin_beginning,donation_frequency,initial_health,final_health) %>%
+  rename(
+  "Age" = age_o,
+  "Initial weight (kg)" = starting_weight_o ,
+  "BMI difference (second - first)" = BMI_diff,
+  "Initial hemoglobin (g/l)" = Hb_beginning_o,
+  "Initial ferritin (ug/l)" = Ferritin_beginning,
+  "Donation frequency (yearly)" =donation_frequency,
+  "Inital health rating"=initial_health,
+  "Final health rating"= final_health
+)
+
+
+summary_table <- CreateTableOne(data = table1data,vars=myVars, strata = "group",test = FALSE)
+  
+tab3Mat <- print(summary_table, nonnormal = non_normal_vars,vars=myVars, quote = FALSE, noSpaces = TRUE, printToggle = FALSE)
+
+
+tab3Mat %>% 
+  kable()
+  write.table(tab3Mat, file = paste0("../results/table_1_population_stratified_",gsub("-","",as.Date(Sys.time())),".txt"),sep="\t")
+```
 
 ## Women lower
 
@@ -266,7 +306,7 @@ tidy_logit_women_lower <-
   tidy %>% 
   mutate(OR = exp(estimate),
          group = "Women_lower",
-         p.value = p.value * 4)
+         p.value = p.value * 1)
 ```
 
 ## Women higher
@@ -327,7 +367,7 @@ tidy_logit_women_higher <-
   tidy %>% 
   mutate(OR = exp(estimate),
          group = "Women_higher",
-         p.value = p.value * 4)
+         p.value = p.value * 1)
 ```
 
 
@@ -389,7 +429,7 @@ tidy_logit_men_lower <-
   tidy %>% 
   mutate(OR = exp(estimate),
          group = "Men_lower",
-         p.value = p.value * 4)
+         p.value = p.value * 1)
 ```
 
 ## Men higher
@@ -450,7 +490,7 @@ tidy_logit_men_higher <-
   tidy %>% 
   mutate(OR = exp(estimate),
          group = "Men_higher",
-         p.value = p.value * 4)
+         p.value = p.value * 1)
 ```
 
 
