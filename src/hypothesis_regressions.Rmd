@@ -196,7 +196,7 @@ regression_data %>% group_by(group) %>%
 ```
 
 
-# Table one
+## Table one
 
 ```{r}
 
@@ -243,7 +243,15 @@ tab3Mat %>%
   write.table(tab3Mat, file = paste0("../results/table_1_population_",gsub("-","",as.Date(Sys.time())),".txt"),sep="\t")
 ```
 
+## Percentage of iron depleted
 
+```{r}
+regression_data %>%  select(group, Ferritin_beginning) %>% mutate(Iron_depleted = Ferritin_beginning < 15) %>%  group_by(group,Iron_depleted) %>% count() %>% group_by(group)%>% summarise(
+  Iron_depleted = Iron_depleted,
+  n= n,
+  Percentage = round(n / sum(n),2)
+)
+```
 
 
 ## Pre-menopausal women 
