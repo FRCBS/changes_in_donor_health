@@ -232,6 +232,18 @@ colnames(table1data)
 
 There should be `ncol(table1data) -1` explenatory factors in the explorative model.
 
+## Percentage of iron depleted
+
+```{r}
+regression_data %>%  dplyr::select(group, Ferritin_beginning) %>% mutate(Iron_depleted = Ferritin_beginning < 15) %>%  group_by(group,Iron_depleted) %>% count() %>% group_by(group)%>% summarise(
+  Iron_depleted = Iron_depleted,
+  n= n,
+  Percentage = round(n / sum(n),2)
+)
+```
+
+
+
 # Women
 
 Check that final data has some variation
