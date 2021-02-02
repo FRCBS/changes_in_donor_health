@@ -92,6 +92,19 @@ hyp_health_sum <- hyp_health %>% group_by(sex) %>% count(First,Second) %>%  muta
 hyp_health_sum  %>% select(sex,First,Second,pros)
 ```
 
+```{r}
+hyp_health %>% 
+    mutate(evolution = case_when(First < Second ~"improved",
+                               First == Second ~ "same",
+                               TRUE ~ "worsened")) %>% 
+  dplyr::select(sex,evolution) %>% group_by(sex,evolution) %>%  
+  summarise(n=n()) %>% 
+  group_by(sex) %>%   
+  mutate(Fraction = round(n/sum(n),2))
+
+```
+
+
 
 ```{r}
 expl_health <- hyp_health %>%  inner_join( changedata %>% select(donor))
@@ -109,6 +122,19 @@ expl_health_sum <- expl_health %>% group_by(sex) %>% count(First,Second) %>%  mu
 expl_health_sum %>% select(sex,First,Second,pros)
 
 ```
+
+```{r}
+expl_health %>% 
+    mutate(evolution = case_when(First < Second ~"improved",
+                               First == Second ~ "same",
+                               TRUE ~ "worsened")) %>% 
+  dplyr::select(sex,evolution) %>% group_by(sex,evolution) %>%  
+  summarise(n=n()) %>% 
+  group_by(sex) %>%   
+  mutate(Fraction = round(n/sum(n),2))
+
+```
+
 
 # Plot
 
