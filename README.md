@@ -1,5 +1,5 @@
 # changes_in_donor_health
-Code for "Associations between worsened self-rated health, lifestyle and iron-levels in Finnish blood donors" [add ref].
+Code for "Low ferritin levels appear to be associated with worsened health in male repeat blood donor" https://doi.org/10.1111/vox.13104 .
 
 ## /src 
 folder contains the .Rmd code files
